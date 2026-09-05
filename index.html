@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiWatchList — Suivi films, séries, animés, jeux &amp; musique</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2364d2ff'/%3E%3Cstop offset='1' stop-color='%230a84ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M24 18v28l24-14z' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg: #000000;
+    --bg-elevated: #1c1c1e;
+    --bg-card: #202022;
+    --bg-card-hover: #2a2a2c;
+    --line: rgba(255,255,255,0.09);
+    --line-strong: rgba(255,255,255,0.14);
+    --accent: #0a84ff;
+    --accent-soft: rgba(10,132,255,0.16);
+    --text: #f5f5f7;
+    --text-muted: #98989d;
+    --text-faint: #6e6e73;
+    --blue: #0a84ff;
+    --amber: #ff9f0a;
+    --green: #30d158;
+    --red: #ff453a;
+    --grey: #8e8e93;
+    --radius-card: 14px;
+    --radius-modal: 20px;
+    --radius-pill: 980px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size:15px;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{
+    font-weight:700;
+    letter-spacing:-0.02em;
+  }
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:10px;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    display:flex; align-items:center; gap:18px;
+    padding:14px 28px;
+    background:rgba(0,0,0,0.72);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+  .brand .mark{
+    width:28px;height:28px;border-radius:8px;
+    background:linear-gradient(160deg,#64d2ff,#0a84ff);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(10,132,255,0.35);
+  }
+  .brand .mark svg{width:14px;height:14px;}
+  .brand .name{font-weight:700; font-size:19px; letter-spacing:-0.02em;}
+
+  .searchwrap{position:relative; flex:1; max-width:520px;}
+  #searchInput{
+    width:100%; padding:9px 14px 9px 34px;
+    background:rgba(118,118,128,0.24); border:none; border-radius:10px;
+    color:var(--text); font-size:14px; font-family:inherit;
+    outline:none; transition:background-color .15s;
+  }
+  #searchInput::placeholder{color:var(--text-faint);}
+  #searchInput:focus{background:rgba(118,118,128,0.34);}
+  .searchwrap svg{
+    position:absolute; left:11px; top:50%; transform:translateY(-50%);
+    pointer-events:none; opacity:0.55;
+  }
+  .cat-tabs{
+    display:flex; gap:2px; flex-shrink:0;
+    background:rgba(118,118,128,0.20); padding:2px; border-radius:9px;
+  }
+  .cat-tab{
+    padding:6px 13px; border-radius:7px; font-size:13px; font-weight:590;
+    background:transparent; border:none; color:var(--text-muted);
+    cursor:pointer; transition:all .15s; white-space:nowrap; font-family:inherit;
+  }
+  .cat-tab:hover{color:var(--text);}
+  .cat-tab.active{background:var(--bg-card-hover); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.4);}
+
+  .icon-btn{
+    background:rgba(118,118,128,0.20); border:none; color:var(--text-muted);
+    width:34px; height:34px; border-radius:9px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition:all .15s;
+  }
+  .icon-btn:hover{color:var(--text); background:rgba(118,118,128,0.32);}
+  .icon-btn svg{width:16px;height:16px;}
+
+  /* ---------- search results dropdown ---------- */
+  .results-panel{
+    position:absolute; top:calc(100% + 8px); left:0; right:0;
+    background:#1c1c1ef0; border:1px solid var(--line-strong); border-radius:14px;
+    max-height:420px; overflow-y:auto; z-index:50;
+    box-shadow:0 24px 60px rgba(0,0,0,0.55);
+    backdrop-filter:blur(20px);
+    display:none;
+  }
+  .results-panel.open{display:block;}
+  .result-row{
+    display:flex; gap:12px; padding:10px 14px; cursor:pointer; align-items:center;
+    border-bottom:1px solid var(--line);
+  }
+  .result-row:last-child{border-bottom:none;}
+  .result-row:hover{background:rgba(255,255,255,0.05);}
+  .result-poster{
+    width:38px; height:54px; object-fit:cover; border-radius:5px; background:var(--bg-elevated); flex-shrink:0;
+  }
+  .result-info .title{font-size:13.5px; font-weight:590;}
+  .result-info .meta{font-size:12px; color:var(--text-muted); margin-top:2px;}
+  .result-add{margin-left:auto; font-size:12.5px; color:var(--accent); font-weight:590; flex-shrink:0;}
+  .result-empty{padding:20px; color:var(--text-muted); font-size:13px; text-align:center;}
+
+  /* ---------- nav secondary ---------- */
+  .subnav{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:20px 28px 8px; max-width:1400px; margin:0 auto;
+  }
+  .view-tabs{display:flex; gap:2px; background:rgba(118,118,128,0.20); padding:2px; border-radius:9px;}
+  .view-tab{
+    padding:6px 15px; border-radius:7px; font-size:13px; font-weight:590;
+    color:var(--text-muted); cursor:pointer; background:none; border:none; font-family:inherit;
+    transition:all .15s;
+  }
+  .view-tab.active{background:var(--bg-card-hover); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.4);}
+  select, .chip-select{
+    background:rgba(118,118,128,0.20); border:none; color:var(--text);
+    padding:7px 12px; border-radius:8px; font-size:13px; font-family:inherit; cursor:pointer; outline:none;
+  }
+  select option{
+    background:#1c1c1e; color:var(--text);
+  }
+
+  /* ---------- custom select (styled dropdown) ---------- */
+  .custom-select{position:relative; display:inline-block;}
+  .custom-select.full-width{display:block; width:100%;}
+  .custom-select-trigger{
+    display:flex; align-items:center; gap:7px; justify-content:center;
+    background:rgba(118,118,128,0.20); border:none; color:var(--text);
+    padding:7px 13px; border-radius:8px; font-size:13px; font-family:inherit; font-weight:500;
+    cursor:pointer; transition:background-color .15s; white-space:nowrap;
+  }
+  .custom-select.full-width .custom-select-trigger{width:100%; justify-content:space-between;}
+  .custom-select-trigger:hover{background:rgba(118,118,128,0.32);}
+  .custom-select-trigger svg{opacity:0.55; flex-shrink:0; transition:transform .15s;}
+  .custom-select-trigger.open svg{transform:rotate(180deg);}
+  .custom-select-menu{
+    position:absolute; top:calc(100% + 6px); left:0; min-width:100%; z-index:60;
+    background:#1c1c1ef2; border:1px solid var(--line-strong); border-radius:12px;
+    padding:6px; box-shadow:0 20px 50px rgba(0,0,0,0.55); backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    display:none; max-height:280px; overflow-y:auto; white-space:nowrap;
+  }
+  .custom-select-menu.open{display:block;}
+  .custom-select-option{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:8px 11px; border-radius:8px; font-size:13px; cursor:pointer; color:var(--text-muted);
+    transition:background-color .1s;
+  }
+  .custom-select-option:hover{background:rgba(255,255,255,0.07); color:var(--text);}
+  .custom-select-option.selected{color:var(--accent); font-weight:590;}
+  .custom-select-option .csl-check{opacity:0; font-size:12px;}
+  .custom-select-option.selected .csl-check{opacity:1;}
+
+  .spacer{flex:1;}
+  .count-pill{font-size:13px; color:var(--text-faint);}
+
+  /* ---------- main ---------- */
+  main{max-width:1400px; margin:0 auto; padding:4px 28px 60px;}
+
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:24px 20px;
+    margin-top:18px;
+  }
+  .card{
+    background:transparent; border-radius:var(--radius-card); overflow:visible; cursor:pointer;
+    border:none; transition:transform .2s cubic-bezier(.2,.7,.3,1);
+    display:flex; flex-direction:column;
+  }
+  .card:hover{transform:translateY(-3px);}
+  .card:hover .poster-wrap{box-shadow:0 14px 30px rgba(0,0,0,0.5);}
+  .poster-wrap{
+    position:relative; width:100%; aspect-ratio:2/3; background:var(--bg-elevated); overflow:hidden;
+    border-radius:var(--radius-card); transition:box-shadow .2s;
+  }
+  .poster-wrap img{width:100%; height:100%; object-fit:cover; display:block;}
+  .poster-wrap .noposter{
+    display:flex; align-items:center; justify-content:center; height:100%;
+    color:var(--text-faint); font-size:13px; font-weight:590; text-align:center; padding:10px;
+  }
+  .status-badge{
+    position:absolute; top:9px; right:9px; font-size:10.5px; font-weight:700;
+    letter-spacing:0.1px; padding:3px 9px; border-radius:var(--radius-pill);
+    backdrop-filter:blur(8px);
+  }
+  .fav-btn{
+    position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%;
+    background:rgba(0,0,0,0.45); backdrop-filter:blur(8px); border:none; cursor:pointer;
+    color:#fff; display:flex; align-items:center; justify-content:center; transition:transform .12s;
+  }
+  .fav-btn:hover{transform:scale(1.08);}
+  .fav-btn.on{color:#ff453a;}
+  .card-body{padding:9px 2px 0;}
+  .card-body .title{font-size:13.5px; font-weight:590; line-height:1.3; margin-bottom:2px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .card-body .sub{font-size:12px; color:var(--text-faint); display:flex; justify-content:space-between; align-items:center;}
+  .progress-bar{height:3px; background:var(--line-strong); border-radius:2px; margin-top:7px; overflow:hidden;}
+  .progress-bar > div{height:100%; background:var(--accent);}
+
+  .empty-state{
+    text-align:center; padding:100px 20px; color:var(--text-muted);
+  }
+  .empty-state .display{font-size:21px; color:var(--text); margin-bottom:8px; font-weight:700;}
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px);
+    display:none; align-items:flex-start; justify-content:center; z-index:100; padding:48px 16px; overflow-y:auto;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:#1c1c1e; border:1px solid var(--line); border-radius:var(--radius-modal); width:100%; max-width:760px;
+    display:flex; overflow:hidden; margin-bottom:40px;
+    box-shadow:0 30px 80px rgba(0,0,0,0.6);
+  }
+  .modal-poster{width:220px; flex-shrink:0; background:var(--bg-elevated);}
+  .modal-poster img{width:100%; height:100%; object-fit:cover; display:block;}
+  .modal-body{flex:1; padding:26px 28px; min-width:0;}
+  .modal-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .modal-title{font-size:21px; font-weight:700; letter-spacing:-0.02em;}
+  .modal-meta{color:var(--text-muted); font-size:13px; margin-top:5px;}
+  .close-x{background:rgba(118,118,128,0.24); border:none; color:var(--text-muted); width:26px; height:26px; border-radius:50%; cursor:pointer; line-height:1; font-size:15px; flex-shrink:0;}
+  .close-x:hover{color:var(--text);}
+  .overview{font-size:13.5px; color:var(--text-muted); line-height:1.5; margin:14px 0; max-height:90px; overflow-y:auto;}
+
+  .field-row{display:flex; gap:12px; margin-top:16px; flex-wrap:wrap;}
+  .field{flex:1; min-width:130px;}
+  .field label{display:block; font-size:11.5px; color:var(--text-faint); margin-bottom:6px; font-weight:500;}
+  .field input[type=text], .field input[type=number], .field input[type=date], .field select, .field textarea{
+    width:100%; background:rgba(118,118,128,0.20); border:1px solid transparent; border-radius:9px; padding:8px 10px;
+    color:var(--text); font-family:inherit; font-size:13px; outline:none; transition:border-color .15s;
+  }
+  .field textarea{resize:vertical; min-height:56px;}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
+
+  .status-pills{display:flex; gap:6px; flex-wrap:wrap;}
+  .status-pill{
+    padding:7px 13px; border-radius:var(--radius-pill); font-size:12.5px; font-weight:590; cursor:pointer;
+    border:none; color:var(--text-muted); background:rgba(118,118,128,0.20); font-family:inherit;
+    transition:all .15s;
+  }
+  .status-pill.active{color:#fff;}
+
+  .modal-actions{display:flex; justify-content:space-between; align-items:center; margin-top:22px; padding-top:18px; border-top:1px solid var(--line);}
+  .btn{padding:9px 18px; border-radius:980px; font-size:13.5px; font-weight:590; cursor:pointer; border:none; font-family:inherit; transition:opacity .15s;}
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{opacity:0.85;}
+  .btn-danger{background:none; color:var(--red);}
+  .btn-danger:hover{opacity:0.7;}
+
+  /* ---------- stats ---------- */
+  .stats-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:2px; margin-top:18px;
+    background:var(--line); border-radius:14px; overflow:hidden;}
+  .stat-card{background:#1c1c1e; padding:20px;}
+  .stat-card .num{font-size:30px; font-weight:700; color:var(--text); letter-spacing:-0.02em;}
+  .stat-card .lbl{font-size:12.5px; color:var(--text-faint); margin-top:4px;}
+  .chart-box{background:#1c1c1e; border:1px solid var(--line); border-radius:14px; padding:22px; margin-top:20px;}
+  .chart-box h3{margin:0 0 14px; font-size:15px; font-weight:590;}
+
+  /* ---------- settings modal ---------- */
+  .settings-modal{max-width:440px; flex-direction:column; padding:28px;}
+  .settings-modal h2{margin:0 0 6px; font-size:19px;}
+  .settings-modal p{color:var(--text-muted); font-size:13px; line-height:1.5; margin:0 0 18px;}
+  .settings-modal .field{margin-bottom:14px;}
+  .settings-modal a{color:var(--accent); text-decoration:none;}
+  .settings-modal a:hover{text-decoration:underline;}
+  .cat-checkbox-row{display:flex; align-items:center; gap:10px; font-size:13.5px;}
+  .cat-checkbox-row input[type=checkbox]{
+    width:18px; height:18px; accent-color:var(--accent); cursor:pointer;
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(6px);
+    background:#2c2c2ef0; border:1px solid var(--line-strong); padding:11px 20px; border-radius:12px;
+    font-size:13px; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+    backdrop-filter:blur(12px);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:720px){
+    .topbar{flex-wrap:wrap; padding:12px 16px;}
+    .searchwrap{order:3; max-width:none; width:100%;}
+    .cat-tabs{overflow-x:auto;}
+    main{padding:4px 16px 60px;}
+    .subnav{padding:16px 16px 8px;}
+    .modal{flex-direction:column; max-width:520px;}
+    .modal-poster{width:100%; height:260px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7-11-7z" fill="white"/></svg></div>
+    <div class="name">MiWatchList</div>
+  </div>
+  <div class="searchwrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="searchInput" type="text" placeholder="Chercher un titre à ajouter…" autocomplete="off">
+    <div id="resultsPanel" class="results-panel"></div>
+  </div>
+  <div class="cat-tabs" id="searchCatTabs">
+    <button class="cat-tab active" data-cat="film">Film</button>
+    <button class="cat-tab" data-cat="serie">Série</button>
+    <button class="cat-tab" data-cat="anime">Animé</button>
+    <button class="cat-tab" data-cat="jeu">Jeu vidéo</button>
+    <button class="cat-tab" data-cat="musique">Musique</button>
+  </div>
+  <button class="icon-btn" id="settingsBtn" title="Clés API">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3.4a2 2 0 110-4h.09A1.65 1.65 0 005 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 5c.6-.25 1-.84 1-1.51V3.4a2 2 0 114 0v.09c0 .67.4 1.26 1 1.51.62.26 1.35.13 1.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06c-.46.47-.59 1.2-.33 1.82.25.6.84 1 1.51 1H21a2 2 0 110 4h-.09c-.67 0-1.26.4-1.51 1z"/></svg>
+  </button>
+</div>
+
+<div class="subnav">
+  <div class="view-tabs">
+    <button class="view-tab active" data-view="library">Bibliothèque</button>
+    <button class="view-tab" data-view="stats">Statistiques</button>
+  </div>
+  <div class="cat-tabs" id="libraryCatTabs">
+    <button class="cat-tab active" data-cat="all">Tous</button>
+    <button class="cat-tab" data-cat="film">Films</button>
+    <button class="cat-tab" data-cat="serie">Séries</button>
+    <button class="cat-tab" data-cat="anime">Animés</button>
+    <button class="cat-tab" data-cat="jeu">Jeux</button>
+    <button class="cat-tab" data-cat="musique">Musique</button>
+  </div>
+  <select id="filterPlaylist" style="display:none;">
+    <option value="all">Toutes les listes</option>
+  </select>
+  <select id="filterStatus">
+    <option value="all">Tous les statuts</option>
+    <option value="a_voir">À voir/jouer</option>
+    <option value="en_cours">En cours</option>
+    <option value="pause">En pause</option>
+    <option value="termine">Terminé</option>
+    <option value="abandonne">Abandonné</option>
+  </select>
+  <select id="sortBy">
+    <option value="added_desc">Ajout récent</option>
+    <option value="added_asc">Ajout ancien</option>
+    <option value="alpha">Alphabétique</option>
+    <option value="artist_alpha">Artiste (A-Z)</option>
+    <option value="favorites_first">Favoris d'abord</option>
+    <option value="rating_desc">Ma note ↓</option>
+    <option value="year_desc">Année ↓</option>
+    <option value="rank_asc">Mon classement</option>
+  </select>
+  <button class="icon-btn" id="newPlaylistBtn" title="Nouvelle playlist" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+  <div class="spacer"></div>
+  <span class="count-pill" id="countPill"></span>
+  <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  </button>
+  <button class="icon-btn" id="importBtn" title="Importer (JSON)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+  </button>
+  <input type="file" id="importFile" accept="application/json" style="display:none;">
+</div>
+
+<main>
+  <div id="libraryView">
+    <div class="grid" id="grid"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <div class="display">Ta bibliothèque est vide</div>
+      <div>Utilise la barre de recherche en haut pour ajouter un film, une série, un animé ou un jeu.</div>
+    </div>
+  </div>
+  <div id="statsView" style="display:none;">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="chart-box">
+      <h3>Genres les plus présents</h3>
+      <canvas id="genreChart" height="220"></canvas>
+    </div>
+  </div>
+</main>
+
+<!-- Detail modal -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal" id="detailModal"></div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal settings-modal">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <h2>Clés API</h2>
+      <button class="close-x" id="closeSettings">×</button>
+    </div>
+    <p>Ces clés restent stockées uniquement dans ton navigateur (localStorage), jamais envoyées ailleurs. AniList (animés) ne nécessite aucune clé.</p>
+
+    <div class="field">
+      <label>Catégories affichées dans "Tous"</label>
+      <div style="font-size:11.5px; color:var(--text-faint); margin-bottom:8px;">Décoche une catégorie pour qu'elle n'apparaisse plus dans la vue "Tous" — elle reste consultable via son propre onglet.</div>
+      <div id="categoryCheckboxes" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <div class="field">
+      <label>Clé TMDB (v3 API Key) — films &amp; séries</label>
+      <input type="text" id="tmdbKeyInput" placeholder="Colle ta clé TMDB ici">
+      <div style="font-size:11.5px; margin-top:5px;">Gratuite sur <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a></div>
+    </div>
+    <div class="field">
+      <label>Clé RAWG — jeux vidéo</label>
+      <input type="text" id="rawgKeyInput" placeholder="Colle ta clé RAWG ici">
+      <div style="font-size:11.5px; margin-top:5px;">Gratuite sur <a href="https://rawg.io/apidocs" target="_blank" rel="noopener">rawg.io/apidocs</a></div>
+    </div>
+    <div class="field">
+      <label>Clé YouTube Data API v3 — musique</label>
+      <input type="text" id="youtubeKeyInput" placeholder="Colle ta clé YouTube ici">
+      <div style="font-size:11.5px; margin-top:5px;">Gratuite sur <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">console.cloud.google.com</a> (active "YouTube Data API v3" puis crée une clé). Quota gratuit : environ 100 recherches par jour.</div>
+    </div>
+    <button class="btn btn-primary" id="saveSettings" style="align-self:flex-start;">Enregistrer</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===================== IndexedDB ===================== */
+  const DB_NAME = "bobine_db", DB_VERSION = 1, STORE = "items";
+  let db;
+  function openDB(){
+    return new Promise((resolve, reject)=>{
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e)=>{
+        const d = e.target.result;
+        if(!d.objectStoreNames.contains(STORE)){
+          const s = d.createObjectStore(STORE, {keyPath:"id", autoIncrement:true});
+          s.createIndex("category", "category", {unique:false});
+          s.createIndex("status", "status", {unique:false});
+        }
+      };
+      req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
+      req.onerror = (e)=> reject(e);
+    });
+  }
+  function txStore(mode="readonly"){ return db.transaction(STORE, mode).objectStore(STORE); }
+  function dbGetAll(){ return new Promise((res,rej)=>{ const r = txStore().getAll(); r.onsuccess=()=>res(r.result); r.onerror=rej; }); }
+  function dbPut(item){ return new Promise((res,rej)=>{ const r = txStore("readwrite").put(item); r.onsuccess=()=>res(r.result); r.onerror=rej; }); }
+  function dbDelete(id){ return new Promise((res,rej)=>{ const r = txStore("readwrite").delete(id); r.onsuccess=()=>res(); r.onerror=rej; }); }
+  function dbClear(){ return new Promise((res,rej)=>{ const r = txStore("readwrite").clear(); r.onsuccess=()=>res(); r.onerror=rej; }); }
+
+  /* ===================== State ===================== */
+  let items = [];
+  let searchCategory = "film";
+  let currentView = "library";
+  let searchDebounce = null;
+  let libraryFilterCat = "all";
+
+  const ALL_CATEGORIES = ["film","serie","anime","jeu","musique"];
+  let categoryVisibility = {};
+  try{
+    categoryVisibility = JSON.parse(localStorage.getItem("bobine_cat_visibility") || "{}");
+  }catch(e){ categoryVisibility = {}; }
+  ALL_CATEGORIES.forEach(c=>{ if(!(c in categoryVisibility)) categoryVisibility[c] = true; });
+
+  let playlistNames = [];
+  try{
+    playlistNames = JSON.parse(localStorage.getItem("bobine_playlists") || "[]");
+  }catch(e){ playlistNames = []; }
+  function savePlaylistNames(){
+    localStorage.setItem("bobine_playlists", JSON.stringify(playlistNames));
+  }
+  function syncPlaylistNamesFromItems(){
+    const known = new Set(playlistNames);
+    items.filter(it=>it.category==="musique").forEach(it=>{
+      (it.playlists||"").split(",").map(t=>t.trim()).filter(Boolean).forEach(t=>known.add(t));
+    });
+    playlistNames = [...known].sort((a,b)=>a.localeCompare(b));
+    savePlaylistNames();
+  }
+
+  const settings = {
+    tmdbKey: localStorage.getItem("bobine_tmdb_key") || "",
+    rawgKey: localStorage.getItem("bobine_rawg_key") || "",
+    youtubeKey: localStorage.getItem("bobine_youtube_key") || ""
+  };
+
+  const STATUS_LABELS = {
+    a_voir:"À voir", en_cours:"En cours", pause:"En pause", termine:"Terminé", abandonne:"Abandonné"
+  };
+  const STATUS_COLORS = {
+    a_voir:"#0a84ff", en_cours:"#ff9f0a", pause:"#8e8e93", termine:"#30d158", abandonne:"#ff453a"
+  };
+  const CAT_LABELS = { film:"Film", serie:"Série", anime:"Animé", jeu:"Jeu vidéo", musique:"Musique" };
+
+  /* ===================== Toast ===================== */
+  function toast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=> t.classList.remove("show"), 2200);
+  }
+
+  /* ===================== Search APIs ===================== */
+  async function searchTMDB(query, type){ // type: 'movie' | 'tv'
+    if(!settings.tmdbKey){ toast("Renseigne ta clé TMDB dans les paramètres (⚙)"); return []; }
+    const url = `https://api.themoviedb.org/3/search/${type}?api_key=${encodeURIComponent(settings.tmdbKey)}&language=fr-FR&query=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("TMDB error " + res.status);
+    const data = await res.json();
+    return (data.results||[]).slice(0,12).map(r=>({
+      source:"tmdb", externalId:r.id, category: type==="movie" ? "film" : "serie",
+      title: r.title || r.name,
+      year: (r.release_date||r.first_air_date||"").slice(0,4),
+      poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : null,
+      overview: r.overview || "",
+      rating: r.vote_average || null,
+      genres: [],
+      extra: {}
+    }));
+  }
+
+  async function fetchTMDBDetails(id, type){
+    if(!settings.tmdbKey) return {};
+    try{
+      const url = `https://api.themoviedb.org/3/${type}/${id}?api_key=${encodeURIComponent(settings.tmdbKey)}&language=fr-FR`;
+      const res = await fetch(url);
+      if(!res.ok) return {};
+      const d = await res.json();
+      return {
+        genres: (d.genres||[]).map(g=>g.name),
+        runtime: d.runtime || (d.episode_run_time && d.episode_run_time[0]) || null,
+        totalSeasons: d.number_of_seasons || null,
+        totalEpisodes: d.number_of_episodes || null
+      };
+    }catch(e){ return {}; }
+  }
+
+  async function searchAniList(query){
+    const gql = `
+      query ($search: String) {
+        Page(perPage: 12) {
+          media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+            id
+            title { romaji english }
+            startDate { year }
+            coverImage { large }
+            description(asHtml: false)
+            averageScore
+            genres
+            episodes
+          }
+        }
+      }`;
+    let res;
+    try{
+      res = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ query: gql, variables: { search: query } })
+      });
+    }catch(networkErr){
+      throw new Error("Impossible de joindre AniList (connexion réseau)");
+    }
+    if(res.status === 429){
+      throw new Error("Trop de recherches trop vite (limite AniList). Attends quelques secondes et réessaie.");
+    }
+    if(!res.ok) throw new Error("AniList a renvoyé une erreur (" + res.status + ")");
+    const json = await res.json();
+    const media = (json.data && json.data.Page && json.data.Page.media) || [];
+    return media.map(m=>({
+      source:"anilist", externalId:m.id, category:"anime",
+      title: (m.title && (m.title.english || m.title.romaji)) || "Sans titre",
+      year: m.startDate && m.startDate.year ? String(m.startDate.year) : "",
+      poster: m.coverImage ? m.coverImage.large : null,
+      overview: (m.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      rating: m.averageScore ? m.averageScore / 10 : null,
+      genres: m.genres || [],
+      extra: { totalEpisodes: m.episodes || null }
+    }));
+  }
+
+  async function searchRAWG(query){
+    if(!settings.rawgKey){ toast("Renseigne ta clé RAWG dans les paramètres (⚙)"); return []; }
+    const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(settings.rawgKey)}&search=${encodeURIComponent(query)}&page_size=12`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("RAWG error " + res.status);
+    const data = await res.json();
+    return (data.results||[]).map(r=>({
+      source:"rawg", externalId:r.id, category:"jeu",
+      title: r.name,
+      year: (r.released||"").slice(0,4),
+      poster: r.background_image || null,
+      overview: "",
+      rating: r.rating || null,
+      genres: (r.genres||[]).map(g=>g.name),
+      extra: { playtimeHint: r.playtime || null }
+    }));
+  }
+
+  function decodeHtmlEntities(str){
+    const txt = document.createElement("textarea");
+    txt.innerHTML = str || "";
+    return txt.value;
+  }
+
+  async function searchYouTubeMusic(query){
+    if(!settings.youtubeKey){ toast("Renseigne ta clé YouTube Data API dans les paramètres (⚙)"); return []; }
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=12&q=${encodeURIComponent(query)}&key=${encodeURIComponent(settings.youtubeKey)}`;
+    let res;
+    try{
+      res = await fetch(url);
+    }catch(networkErr){
+      throw new Error("Impossible de joindre YouTube : " + networkErr.message);
+    }
+    if(!res.ok){
+      let msg = "YouTube a renvoyé une erreur (" + res.status + ")";
+      try{
+        const errJson = await res.json();
+        if(errJson.error && errJson.error.message) msg += " : " + errJson.error.message;
+      }catch(e){}
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    return (data.items||[]).map(item=>{
+      const thumbs = item.snippet.thumbnails || {};
+      const thumb = thumbs.high || thumbs.medium || thumbs.default || null;
+      return {
+        source:"youtube", externalId:item.id.videoId, category:"musique",
+        title: decodeHtmlEntities(item.snippet.title),
+        year: (item.snippet.publishedAt||"").slice(0,4),
+        poster: thumb ? thumb.url : null,
+        overview: decodeHtmlEntities(item.snippet.description||""),
+        rating: null,
+        genres: [],
+        extra: { artist: decodeHtmlEntities(item.snippet.channelTitle||""), album: "", durationMs: null, videoId: item.id.videoId }
+      };
+    });
+  }
+
+  async function runSearch(query){
+    const panel = document.getElementById("resultsPanel");
+    panel.innerHTML = `<div class="result-empty">Recherche en cours…</div>`;
+    panel.classList.add("open");
+    try{
+      let results = [];
+      if(searchCategory === "film") results = await searchTMDB(query, "movie");
+      else if(searchCategory === "serie") results = await searchTMDB(query, "tv");
+      else if(searchCategory === "anime") results = await searchAniList(query);
+      else if(searchCategory === "jeu") results = await searchRAWG(query);
+      else if(searchCategory === "musique") results = await searchYouTubeMusic(query);
+      renderResults(results);
+    }catch(e){
+      panel.innerHTML = `
+        <div class="result-empty">
+          ${escapeHtml(e.message)}
+          <div style="margin-top:10px;"><button class="btn btn-primary" id="retrySearchBtn" style="padding:7px 16px; font-size:12.5px;">Réessayer</button></div>
+        </div>`;
+      const retryBtn = document.getElementById("retrySearchBtn");
+      if(retryBtn) retryBtn.addEventListener("click", ()=> runSearch(query));
+    }
+  }
+
+  function renderResults(results){
+    const panel = document.getElementById("resultsPanel");
+    if(!results.length){
+      panel.innerHTML = `<div class="result-empty">Aucun résultat.</div>`;
+      return;
+    }
+    panel.innerHTML = "";
+    results.forEach(r=>{
+      const row = document.createElement("div");
+      row.className = "result-row";
+      row.innerHTML = `
+        ${r.poster ? `<img class="result-poster" src="${r.poster}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'result-poster'}))">` : `<div class="result-poster"></div>`}
+        <div class="result-info">
+          <div class="title">${escapeHtml(r.title)}</div>
+          <div class="meta">${r.category === "musique" ? escapeHtml(r.extra.artist || "") : (r.year || "Année inconnue")}${r.rating ? " · ★ " + Number(r.rating).toFixed(1) : ""}</div>
+        </div>
+        <div class="result-add">Ajouter</div>
+      `;
+      row.addEventListener("click", ()=> addFromResult(r));
+      panel.appendChild(row);
+    });
+  }
+
+  async function addFromResult(r){
+    let details = {};
+    if(r.source === "tmdb"){
+      details = await fetchTMDBDetails(r.externalId, r.category === "film" ? "movie" : "tv");
+    }
+    const item = {
+      category: r.category,
+      source: r.source,
+      externalId: r.externalId,
+      title: r.title,
+      year: r.year || "",
+      poster: r.poster,
+      overview: r.overview,
+      extRating: r.rating,
+      genres: details.genres && details.genres.length ? details.genres : r.genres,
+      runtime: details.runtime || null,
+      totalSeasons: details.totalSeasons || null,
+      totalEpisodes: details.totalEpisodes || (r.extra && r.extra.totalEpisodes) || null,
+      playtimeHint: (r.extra && r.extra.playtimeHint) || null,
+      artist: (r.extra && r.extra.artist) || "",
+      album: (r.extra && r.extra.album) || "",
+      durationMs: (r.extra && r.extra.durationMs) || null,
+      videoId: (r.extra && r.extra.videoId) || null,
+
+      status: "a_voir",
+      userRating: 0,
+      notes: "",
+      episodesWatched: 0,
+      hoursPlayed: 0,
+      percentComplete: 0,
+      ranking: null,
+      favorite: false,
+      playlists: "",
+      dateStart: "",
+      dateEnd: "",
+      dateAdded: new Date().toISOString()
+    };
+    const id = await dbPut(item);
+    item.id = id;
+    items.push(item);
+    document.getElementById("resultsPanel").classList.remove("open");
+    document.getElementById("searchInput").value = "";
+    toast(`« ${item.title} » ajouté à ta bibliothèque`);
+    renderLibrary();
+  }
+
+  function escapeHtml(s){
+    return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  window.__imgFallback = function(img){
+    const div = document.createElement("div");
+    div.className = img.dataset.fallbackClass || "noposter";
+    div.textContent = img.dataset.fallbackTitle || "";
+    img.replaceWith(div);
+  };
+
+  /* ===================== Custom select (styled dropdown) ===================== */
+  function enhanceSelect(selectEl){
+    if(!selectEl || selectEl.dataset.enhanced) return selectEl._customWrapper;
+    selectEl.dataset.enhanced = "1";
+    const originallyHidden = selectEl.style.display === "none";
+    const isFullWidth = selectEl.style.width === "100%";
+    selectEl.style.display = "none";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-select" + (isFullWidth ? " full-width" : "");
+    wrapper.style.display = originallyHidden ? "none" : (isFullWidth ? "block" : "inline-block");
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "custom-select-trigger";
+    trigger.innerHTML = `<span class="csl-label"></span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+    const menu = document.createElement("div");
+    menu.className = "custom-select-menu";
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+    selectEl.parentNode.insertBefore(wrapper, selectEl.nextSibling);
+
+    function build(){
+      const opts = [...selectEl.options];
+      const selectedOpt = opts[selectEl.selectedIndex];
+      trigger.querySelector(".csl-label").textContent = selectedOpt ? selectedOpt.text : "";
+      menu.innerHTML = "";
+      opts.forEach(opt=>{
+        const row = document.createElement("div");
+        row.className = "custom-select-option" + (opt.value === selectEl.value ? " selected" : "");
+        row.innerHTML = `<span>${escapeHtml(opt.text)}</span><span class="csl-check">✓</span>`;
+        row.addEventListener("click", ()=>{
+          selectEl.value = opt.value;
+          selectEl.dispatchEvent(new Event("change"));
+          build();
+          closeMenu();
+        });
+        menu.appendChild(row);
+      });
+    }
+    function openMenu(){
+      document.querySelectorAll(".custom-select-menu.open").forEach(m=>m.classList.remove("open"));
+      document.querySelectorAll(".custom-select-trigger.open").forEach(t=>t.classList.remove("open"));
+      menu.classList.add("open");
+      trigger.classList.add("open");
+    }
+    function closeMenu(){
+      menu.classList.remove("open");
+      trigger.classList.remove("open");
+    }
+    trigger.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      if(menu.classList.contains("open")) closeMenu(); else openMenu();
+    });
+    document.addEventListener("click", (e)=>{
+      if(!wrapper.contains(e.target)) closeMenu();
+    });
+
+    build();
+    wrapper.refresh = build;
+    wrapper.setVisible = function(visible){
+      wrapper.style.display = visible ? (isFullWidth ? "block" : "inline-block") : "none";
+    };
+    selectEl._customWrapper = wrapper;
+    return wrapper;
+  }
+
+  /* ===================== Rendering: library ===================== */
+  function getFiltered(){
+    const cat = libraryFilterCat;
+    const status = document.getElementById("filterStatus").value;
+    const sortBy = document.getElementById("sortBy").value;
+    const playlist = document.getElementById("filterPlaylist").value;
+    let list = items.filter(it=>{
+      if(cat !== "all" && it.category !== cat) return false;
+      if(cat === "all" && categoryVisibility[it.category] === false) return false;
+      if(status !== "all" && it.status !== status) return false;
+      if(cat === "musique" && playlist !== "all"){
+        const tags = (it.playlists||"").split(",").map(t=>t.trim()).filter(Boolean);
+        if(!tags.includes(playlist)) return false;
+      }
+      return true;
+    });
+    list.sort((a,b)=>{
+      switch(sortBy){
+        case "added_asc": return new Date(a.dateAdded) - new Date(b.dateAdded);
+        case "alpha": return a.title.localeCompare(b.title);
+        case "rating_desc": return (b.userRating||0) - (a.userRating||0);
+        case "year_desc": return (parseInt(b.year)||0) - (parseInt(a.year)||0);
+        case "rank_asc": {
+          const ra = a.ranking == null ? Infinity : a.ranking;
+          const rb = b.ranking == null ? Infinity : b.ranking;
+          return ra - rb;
+        }
+        case "artist_alpha": return (a.artist||"").localeCompare(b.artist||"") || a.title.localeCompare(b.title);
+        case "favorites_first": {
+          const fa = a.favorite ? 0 : 1, fb = b.favorite ? 0 : 1;
+          return fa - fb || (new Date(b.dateAdded) - new Date(a.dateAdded));
+        }
+        default: return new Date(b.dateAdded) - new Date(a.dateAdded);
+      }
+    });
+    return list;
+  }
+
+  function progressLabel(it){
+    if(it.category === "jeu") return it.percentComplete ? `${it.percentComplete}%` : "";
+    if((it.category === "serie" || it.category === "anime") && it.totalEpisodes){
+      return `Ép. ${it.episodesWatched||0}/${it.totalEpisodes}`;
+    }
+    if(it.category === "serie" || it.category === "anime") return it.episodesWatched ? `Ép. ${it.episodesWatched}` : "";
+    return "";
+  }
+
+  function updatePlaylistFilter(){
+    const playlistSel = document.getElementById("filterPlaylist");
+    const newBtn = document.getElementById("newPlaylistBtn");
+    if(libraryFilterCat !== "musique"){
+      if(playlistSel._customWrapper) playlistSel._customWrapper.setVisible(false);
+      newBtn.style.display = "none";
+      return;
+    }
+    newBtn.style.display = "flex";
+    const current = playlistSel.value;
+    playlistSel.innerHTML = `<option value="all">Toutes les listes</option>` +
+      playlistNames.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+    if(playlistNames.includes(current)) playlistSel.value = current;
+    if(playlistSel._customWrapper){
+      playlistSel._customWrapper.setVisible(playlistNames.length > 0);
+      playlistSel._customWrapper.refresh();
+    }
+  }
+
+  function renderLibrary(){
+    updatePlaylistFilter();
+    const grid = document.getElementById("grid");
+    const list = getFiltered();
+    document.getElementById("countPill").textContent = `${list.length} titre${list.length>1?"s":""}`;
+    document.getElementById("emptyState").style.display = (items.length === 0) ? "block" : "none";
+    grid.innerHTML = "";
+    list.forEach(it=>{
+      const card = document.createElement("div");
+      card.className = "card";
+      const pct = it.category === "jeu" ? (it.percentComplete||0)
+        : (it.totalEpisodes ? Math.min(100, Math.round((it.episodesWatched||0)/it.totalEpisodes*100)) : 0);
+      card.innerHTML = `
+        <div class="poster-wrap">
+          ${it.poster ? `<img src="${it.poster}" alt="" loading="lazy" data-fallback-title="${escapeHtml(it.title)}" onerror="window.__imgFallback(this)">` : `<div class="noposter">${escapeHtml(it.title)}</div>`}
+          <button class="fav-btn ${it.favorite?"on":""}" data-fav-id="${it.id}" title="${it.favorite?"Retirer des favoris":"Ajouter aux favoris"}">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="${it.favorite?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M12 21s-6.7-4.35-9.3-8.1C1 10.1 1.7 6.6 4.6 5.1c2.3-1.2 5-.4 6.4 1.6l1 1.4 1-1.4c1.4-2 4.1-2.8 6.4-1.6 2.9 1.5 3.6 5 1.9 7.8C18.7 16.65 12 21 12 21z"/></svg>
+          </button>
+          <div class="status-badge" style="background:${STATUS_COLORS[it.status]}20; color:${STATUS_COLORS[it.status]}">${STATUS_LABELS[it.status]}</div>
+        </div>
+        <div class="card-body">
+          <div class="title">${escapeHtml(it.title)}</div>
+          <div class="sub"><span>${it.category === "musique" ? escapeHtml(it.artist||"") : (CAT_LABELS[it.category] + (it.year ? " · "+it.year : ""))}</span><span>${it.ranking ? "#"+it.ranking : (it.userRating ? "★ "+it.userRating : "")}</span></div>
+          ${pct > 0 ? `<div class="progress-bar"><div style="width:${pct}%"></div></div>` : ""}
+        </div>
+      `;
+      card.addEventListener("click", ()=> openDetail(it.id));
+      card.querySelector(".fav-btn").addEventListener("click", async (e)=>{
+        e.stopPropagation();
+        it.favorite = !it.favorite;
+        await dbPut(it);
+        renderLibrary();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  /* ===================== Detail modal ===================== */
+  function openDetail(id){
+    const it = items.find(i=>i.id === id);
+    if(!it) return;
+    const modal = document.getElementById("detailModal");
+
+    const showEpisodes = it.category === "serie" || it.category === "anime";
+    const showGame = it.category === "jeu";
+    const showMusic = it.category === "musique";
+
+    function fmtDuration(ms){
+      if(!ms) return "";
+      const totalSec = Math.round(ms/1000);
+      const m = Math.floor(totalSec/60), s = totalSec%60;
+      return `${m}:${s.toString().padStart(2,"0")}`;
+    }
+
+    modal.innerHTML = `
+      <div class="modal-poster">${it.poster ? `<img src="${it.poster}" alt="" data-fallback-title="${escapeHtml(it.title)}" onerror="window.__imgFallback(this)">` : ""}</div>
+      <div class="modal-body">
+        <div class="modal-top">
+          <div>
+            <div class="modal-title">${escapeHtml(it.title)}</div>
+            <div class="modal-meta">${
+              showMusic
+                ? `${escapeHtml(it.artist||"")}${it.album?" · "+escapeHtml(it.album):""}${it.durationMs?" · "+fmtDuration(it.durationMs):""}${it.year?" · "+it.year:""}`
+                : `${CAT_LABELS[it.category]} ${it.year?"· "+it.year:""} ${it.extRating?"· note publique "+Number(it.extRating).toFixed(1):""} ${it.genres&&it.genres.length? "· "+it.genres.slice(0,3).join(", "):""}`
+            }</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <button class="icon-btn ${it.favorite?"on":""}" id="modalFavBtn" title="${it.favorite?"Retirer des favoris":"Ajouter aux favoris"}" style="${it.favorite?"color:#ff453a;":""}">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="${it.favorite?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M12 21s-6.7-4.35-9.3-8.1C1 10.1 1.7 6.6 4.6 5.1c2.3-1.2 5-.4 6.4 1.6l1 1.4 1-1.4c1.4-2 4.1-2.8 6.4-1.6 2.9 1.5 3.6 5 1.9 7.8C18.7 16.65 12 21 12 21z"/></svg>
+            </button>
+            <button class="close-x" id="closeDetail">×</button>
+          </div>
+        </div>
+        ${it.overview ? `<div class="overview">${escapeHtml(it.overview)}</div>` : ""}
+        ${showMusic && it.videoId ? `<a href="https://www.youtube.com/watch?v=${it.videoId}" target="_blank" rel="noopener" style="display:inline-block; font-size:12.5px; color:var(--accent); text-decoration:none; margin-top:-6px; margin-bottom:14px;">▶ Voir sur YouTube</a>` : ""}
+
+        <div class="field">
+          <label>Statut</label>
+          <div class="status-pills" id="statusPills">
+            ${Object.keys(STATUS_LABELS).map(s=>`<button class="status-pill ${it.status===s?"active":""}" data-status="${s}" style="${it.status===s?`background:${STATUS_COLORS[s]}`:""}">${STATUS_LABELS[s]}</button>`).join("")}
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Ma note</label>
+            <select id="ratingSelect" style="width:100%;">
+              ${["Non noté",1,2,3,4,5,6,7,8,9,10].map((v,n)=>`<option value="${n}" ${it.userRating===n?"selected":""}>${n===0?"Non noté":n}</option>`).join("")}
+            </select>
+          </div>
+          ${showEpisodes ? `
+          <div class="field">
+            <label>Épisodes vus${it.totalEpisodes?` / ${it.totalEpisodes}`:""}</label>
+            <input type="number" id="epWatched" min="0" ${it.totalEpisodes?`max="${it.totalEpisodes}"`:""} value="${it.episodesWatched||0}">
+          </div>` : ""}
+          ${showGame ? `
+          <div class="field">
+            <label>Progression (%)</label>
+            <input type="number" id="pctComplete" min="0" max="100" value="${it.percentComplete||0}">
+          </div>
+          <div class="field">
+            <label>Heures jouées</label>
+            <input type="number" id="hoursPlayed" min="0" step="0.5" value="${it.hoursPlayed||0}">
+          </div>` : ""}
+          ${showMusic ? `
+          <div class="field">
+            <label>Mon classement (top)</label>
+            <input type="number" id="rankInput" min="1" step="1" placeholder="ex : 1" value="${it.ranking||""}">
+          </div>` : ""}
+        </div>
+
+        ${showMusic ? `
+        <div class="field">
+          <label>Playlist(s)</label>
+          <div id="playlistCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+            ${playlistNames.map(name=>{
+              const current = (it.playlists||"").split(",").map(t=>t.trim()).filter(Boolean);
+              const checked = current.includes(name);
+              return `<label class="status-pill ${checked?"active":""}" style="cursor:pointer; ${checked?"background:var(--accent); color:#fff;":""}">
+                <input type="checkbox" value="${escapeHtml(name)}" ${checked?"checked":""} style="display:none;" class="playlist-check">
+                ${escapeHtml(name)}
+              </label>`;
+            }).join("") || `<span style="font-size:12.5px; color:var(--text-faint);">Aucune playlist pour l'instant.</span>`}
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="newPlaylistInline" placeholder="Nouvelle playlist…" style="flex:1;">
+            <button class="btn btn-primary" id="addPlaylistInline" style="padding:8px 14px; font-size:12.5px;">Créer</button>
+          </div>
+        </div>` : ""}
+
+        <div class="field-row">
+          <div class="field">
+            <label>Date de début</label>
+            <input type="date" id="dateStart" value="${it.dateStart||""}">
+          </div>
+          <div class="field">
+            <label>Date de fin</label>
+            <input type="date" id="dateEnd" value="${it.dateEnd||""}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notes personnelles</label>
+          <textarea id="notesArea" placeholder="Tes impressions, ce qu'il te reste à voir…">${escapeHtml(it.notes||"")}</textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-danger" id="deleteItem">Supprimer</button>
+          <button class="btn btn-primary" id="saveItem">Enregistrer</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("closeDetail").addEventListener("click", closeDetail);
+    document.getElementById("modalFavBtn").addEventListener("click", async ()=>{
+      it.favorite = !it.favorite;
+      await dbPut(it);
+      openDetail(it.id);
+      renderLibrary();
+    });
+    document.getElementById("statusPills").addEventListener("click", (e)=>{
+      const btn = e.target.closest(".status-pill");
+      if(!btn) return;
+      modal.querySelectorAll(".status-pill").forEach(p=>{p.classList.remove("active"); p.style.background="";});
+      btn.classList.add("active");
+      btn.style.background = STATUS_COLORS[btn.dataset.status];
+      modal.dataset.pendingStatus = btn.dataset.status;
+    });
+    modal.dataset.pendingStatus = it.status;
+
+    let pendingRating = it.userRating || 0;
+    const ratingSelect = document.getElementById("ratingSelect");
+    enhanceSelect(ratingSelect);
+    ratingSelect.addEventListener("change", ()=>{
+      pendingRating = parseInt(ratingSelect.value) || 0;
+    });
+
+    if(showMusic){
+      const plContainer = document.getElementById("playlistCheckboxes");
+      plContainer.addEventListener("change", (e)=>{
+        const cb = e.target.closest(".playlist-check");
+        if(!cb) return;
+        const label = cb.closest("label");
+        label.classList.toggle("active", cb.checked);
+        label.style.background = cb.checked ? "var(--accent)" : "";
+        label.style.color = cb.checked ? "#fff" : "";
+      });
+      document.getElementById("addPlaylistInline").addEventListener("click", ()=>{
+        const input = document.getElementById("newPlaylistInline");
+        const val = input.value.trim();
+        if(!val) return;
+        if(!playlistNames.includes(val)){
+          playlistNames.push(val);
+          playlistNames.sort((a,b)=>a.localeCompare(b));
+          savePlaylistNames();
+        }
+        if(!plContainer.querySelector(`input.playlist-check[value="${CSS.escape(val)}"]`)){
+          const placeholder = plContainer.querySelector("span");
+          if(placeholder) placeholder.remove();
+          const label = document.createElement("label");
+          label.className = "status-pill active";
+          label.style.cursor = "pointer";
+          label.style.background = "var(--accent)";
+          label.style.color = "#fff";
+          label.innerHTML = `<input type="checkbox" value="${escapeHtml(val)}" checked style="display:none;" class="playlist-check"> ${escapeHtml(val)}`;
+          plContainer.appendChild(label);
+        }
+        input.value = "";
+      });
+      document.getElementById("newPlaylistInline").addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){ e.preventDefault(); document.getElementById("addPlaylistInline").click(); }
+      });
+    }
+
+    document.getElementById("deleteItem").addEventListener("click", async ()=>{
+      if(!confirm(`Supprimer « ${it.title} » de ta bibliothèque ?`)) return;
+      await dbDelete(it.id);
+      items = items.filter(i=>i.id !== it.id);
+      closeDetail();
+      renderLibrary();
+      toast("Titre supprimé");
+    });
+
+    document.getElementById("saveItem").addEventListener("click", async ()=>{
+      it.status = modal.dataset.pendingStatus;
+      it.userRating = pendingRating;
+      if(showEpisodes) it.episodesWatched = parseInt(document.getElementById("epWatched").value) || 0;
+      if(showGame){
+        it.percentComplete = Math.min(100, Math.max(0, parseInt(document.getElementById("pctComplete").value) || 0));
+        it.hoursPlayed = parseFloat(document.getElementById("hoursPlayed").value) || 0;
+      }
+      if(showMusic){
+        const rankVal = parseInt(document.getElementById("rankInput").value);
+        it.ranking = isNaN(rankVal) ? null : rankVal;
+        const checkedPlaylists = [...document.querySelectorAll("#playlistCheckboxes .playlist-check:checked")].map(cb=>cb.value);
+        it.playlists = checkedPlaylists.join(", ");
+      }
+      it.dateStart = document.getElementById("dateStart").value;
+      it.dateEnd = document.getElementById("dateEnd").value;
+      it.notes = document.getElementById("notesArea").value;
+      await dbPut(it);
+      closeDetail();
+      renderLibrary();
+      toast("Modifications enregistrées");
+    });
+
+    document.getElementById("detailOverlay").classList.add("open");
+  }
+  function closeDetail(){ document.getElementById("detailOverlay").classList.remove("open"); }
+
+  /* ===================== Stats ===================== */
+  function renderStats(){
+    const grid = document.getElementById("statsGrid");
+    const total = items.length;
+    const byCat = {};
+    const byStatus = {};
+    let totalMinutes = 0;
+    const genreCounts = {};
+
+    items.forEach(it=>{
+      byCat[it.category] = (byCat[it.category]||0) + 1;
+      byStatus[it.status] = (byStatus[it.status]||0) + 1;
+      (it.genres||[]).forEach(g=> genreCounts[g] = (genreCounts[g]||0) + 1);
+      if(it.status === "termine"){
+        if(it.category === "film") totalMinutes += it.runtime || 110;
+        else if(it.category === "serie") totalMinutes += (it.episodesWatched || it.totalEpisodes || 0) * (it.runtime || 42);
+        else if(it.category === "anime") totalMinutes += (it.episodesWatched || it.totalEpisodes || 0) * 24;
+        else if(it.category === "jeu") totalMinutes += (it.hoursPlayed || 0) * 60;
+      } else {
+        if(it.category === "serie" || it.category === "anime") totalMinutes += (it.episodesWatched||0) * (it.category === "anime" ? 24 : (it.runtime||42));
+        if(it.category === "jeu") totalMinutes += (it.hoursPlayed||0) * 60;
+      }
+    });
+
+    const totalHours = Math.round(totalMinutes / 60);
+    const cards = [
+      {num: total, lbl:"Titres suivis"},
+      {num: byCat.film||0, lbl:"Films"},
+      {num: byCat.serie||0, lbl:"Séries"},
+      {num: byCat.anime||0, lbl:"Animés"},
+      {num: byCat.jeu||0, lbl:"Jeux vidéo"},
+      {num: byCat.musique||0, lbl:"Musiques"},
+      {num: byStatus.termine||0, lbl:"Terminés"},
+      {num: byStatus.en_cours||0, lbl:"En cours"},
+      {num: totalHours, lbl:"Heures estimées"},
+    ];
+    grid.innerHTML = cards.map(c=>`<div class="stat-card"><div class="num">${c.num}</div><div class="lbl">${c.lbl}</div></div>`).join("");
+
+    drawGenreChart(genreCounts);
+  }
+
+  function drawGenreChart(genreCounts){
+    const canvas = document.getElementById("genreChart");
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.parentElement.clientWidth - 40;
+    canvas.width = cssWidth * dpr;
+    canvas.height = 220 * dpr;
+    canvas.style.width = cssWidth + "px";
+    canvas.style.height = "220px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cssWidth,220);
+
+    const entries = Object.entries(genreCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    if(!entries.length){
+      ctx.fillStyle = "#98989d";
+      ctx.font = "13px -apple-system, sans-serif";
+      ctx.fillText("Pas encore assez de données.", 10, 30);
+      return;
+    }
+    const max = Math.max(...entries.map(e=>e[1]));
+    const barH = 20, gap = 10, leftPad = 130;
+    entries.forEach((e, i)=>{
+      const y = 10 + i * (barH+gap);
+      const w = (cssWidth - leftPad - 50) * (e[1]/max);
+      ctx.fillStyle = "#98989d";
+      ctx.font = "12px -apple-system, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(e[0], leftPad-12, y+barH*0.7);
+      ctx.fillStyle = "#0a84ff";
+      ctx.beginPath();
+      ctx.roundRect(leftPad, y, Math.max(w,3), barH, 4);
+      ctx.fill();
+      ctx.fillStyle = "#f5f5f7";
+      ctx.textAlign = "left";
+      ctx.fillText(e[1], leftPad + w + 8, y+barH*0.7);
+    });
+  }
+
+  /* ===================== Export / Import ===================== */
+  function exportData(){
+    const blob = new Blob([JSON.stringify(items, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `miwatchlist_export_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Export lancé");
+  }
+  async function importData(file){
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!Array.isArray(data)) throw new Error("Format invalide");
+      if(!confirm(`Importer ${data.length} titres ? Cela remplacera ta bibliothèque actuelle.`)) return;
+      await dbClear();
+      items = [];
+      for(const raw of data){
+        const it = Object.assign({}, raw);
+        delete it.id;
+        const id = await dbPut(it);
+        it.id = id;
+        items.push(it);
+      }
+      renderLibrary();
+      syncPlaylistNamesFromItems();
+      toast("Import réussi");
+    }catch(e){
+      toast("Échec de l'import : " + e.message);
+    }
+  }
+
+  /* ===================== Settings ===================== */
+  function openSettings(){
+    document.getElementById("tmdbKeyInput").value = settings.tmdbKey;
+    document.getElementById("rawgKeyInput").value = settings.rawgKey;
+    document.getElementById("youtubeKeyInput").value = settings.youtubeKey;
+    const box = document.getElementById("categoryCheckboxes");
+    box.innerHTML = ALL_CATEGORIES.map(c=>`
+      <label class="cat-checkbox-row">
+        <input type="checkbox" data-cat="${c}" ${categoryVisibility[c] !== false ? "checked" : ""}>
+        ${CAT_LABELS[c]}
+      </label>
+    `).join("");
+    document.getElementById("settingsOverlay").classList.add("open");
+  }
+  function closeSettings(){ document.getElementById("settingsOverlay").classList.remove("open"); }
+
+  /* ===================== Wiring ===================== */
+  function init(){
+    document.getElementById("searchCatTabs").addEventListener("click", (e)=>{
+      const btn = e.target.closest(".cat-tab");
+      if(!btn) return;
+      searchCategory = btn.dataset.cat;
+      document.querySelectorAll("#searchCatTabs .cat-tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const q = document.getElementById("searchInput").value.trim();
+      if(q.length >= 2) runSearch(q);
+    });
+
+    document.getElementById("searchInput").addEventListener("input", (e)=>{
+      const q = e.target.value.trim();
+      clearTimeout(searchDebounce);
+      if(q.length < 2){ document.getElementById("resultsPanel").classList.remove("open"); return; }
+      searchDebounce = setTimeout(()=> runSearch(q), 400);
+    });
+    document.addEventListener("click", (e)=>{
+      if(!e.target.closest(".searchwrap")) document.getElementById("resultsPanel").classList.remove("open");
+    });
+
+    document.querySelectorAll(".view-tab").forEach(tab=>{
+      tab.addEventListener("click", ()=>{
+        document.querySelectorAll(".view-tab").forEach(t=>t.classList.remove("active"));
+        tab.classList.add("active");
+        currentView = tab.dataset.view;
+        document.getElementById("libraryView").style.display = currentView==="library" ? "block":"none";
+        document.getElementById("statsView").style.display = currentView==="stats" ? "block":"none";
+        if(currentView === "stats") renderStats();
+      });
+    });
+
+    document.getElementById("libraryCatTabs").addEventListener("click", (e)=>{
+      const btn = e.target.closest(".cat-tab");
+      if(!btn) return;
+      libraryFilterCat = btn.dataset.cat;
+      document.querySelectorAll("#libraryCatTabs .cat-tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      renderLibrary();
+    });
+
+    ["filterStatus","sortBy","filterPlaylist"].forEach(id=>{
+      enhanceSelect(document.getElementById(id));
+      document.getElementById(id).addEventListener("change", renderLibrary);
+    });
+
+    document.getElementById("newPlaylistBtn").addEventListener("click", ()=>{
+      const name = prompt("Nom de la nouvelle playlist :");
+      if(!name || !name.trim()) return;
+      const val = name.trim();
+      if(!playlistNames.includes(val)){
+        playlistNames.push(val);
+        playlistNames.sort((a,b)=>a.localeCompare(b));
+        savePlaylistNames();
+      }
+      updatePlaylistFilter();
+      document.getElementById("filterPlaylist").value = val;
+      renderLibrary();
+      toast(`Playlist « ${val} » créée`);
+    });
+
+    document.getElementById("detailOverlay").addEventListener("click", (e)=>{
+      if(e.target.id === "detailOverlay") closeDetail();
+    });
+    document.getElementById("settingsOverlay").addEventListener("click", (e)=>{
+      if(e.target.id === "settingsOverlay") closeSettings();
+    });
+
+    document.getElementById("settingsBtn").addEventListener("click", openSettings);
+    document.getElementById("closeSettings").addEventListener("click", closeSettings);
+    document.getElementById("saveSettings").addEventListener("click", ()=>{
+      settings.tmdbKey = document.getElementById("tmdbKeyInput").value.trim();
+      settings.rawgKey = document.getElementById("rawgKeyInput").value.trim();
+      settings.youtubeKey = document.getElementById("youtubeKeyInput").value.trim();
+      localStorage.setItem("bobine_tmdb_key", settings.tmdbKey);
+      localStorage.setItem("bobine_rawg_key", settings.rawgKey);
+      localStorage.setItem("bobine_youtube_key", settings.youtubeKey);
+
+      document.querySelectorAll("#categoryCheckboxes input[type=checkbox]").forEach(cb=>{
+        categoryVisibility[cb.dataset.cat] = cb.checked;
+      });
+      localStorage.setItem("bobine_cat_visibility", JSON.stringify(categoryVisibility));
+
+      closeSettings();
+      renderLibrary();
+      toast("Paramètres enregistrés");
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", exportData);
+    document.getElementById("importBtn").addEventListener("click", ()=> document.getElementById("importFile").click());
+    document.getElementById("importFile").addEventListener("change", (e)=>{
+      if(e.target.files[0]) importData(e.target.files[0]);
+      e.target.value = "";
+    });
+
+    window.addEventListener("resize", ()=>{ if(currentView === "stats") renderStats(); });
+  }
+
+  /* ===================== Boot ===================== */
+  openDB().then(async ()=>{
+    items = await dbGetAll();
+    syncPlaylistNamesFromItems();
+    init();
+    renderLibrary();
+  }).catch(err=>{
+    console.error(err);
+    document.body.innerHTML = "<p style='color:white;padding:40px;font-family:sans-serif;'>Erreur d'initialisation de la base locale (IndexedDB). Essaie un autre navigateur ou vérifie que le mode privé n'est pas actif.</p>";
+  });
+
+})();
+</script>
+</body>
+</html>

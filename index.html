@@ -1036,6 +1036,20 @@
     return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
 
+  // Permet de faire défiler horizontalement une rangée avec la molette verticale classique
+  // (comportement natif sur trackpad, mais pas avec une souris standard sans cela).
+  function enableWheelHorizontalScroll(el){
+    if(!el || el.dataset.wheelEnabled) return;
+    el.dataset.wheelEnabled = "1";
+    el.addEventListener("wheel", (e)=>{
+      if(el.scrollWidth <= el.clientWidth) return;
+      if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
   window.__imgFallback = function(img){
     const div = document.createElement("div");
     div.className = img.dataset.fallbackClass || "noposter";
@@ -1122,7 +1136,11 @@
     document.addEventListener("click", (e)=>{
       if(!wrapper.contains(e.target) && !menu.contains(e.target)) closeMenu();
     });
-    window.addEventListener("scroll", ()=>{ if(menu.classList.contains("open")) closeMenu(); }, true);
+    window.addEventListener("scroll", (e)=>{
+      if(!menu.classList.contains("open")) return;
+      if(menu.contains(e.target)) return; // le défilement a lieu DANS le menu lui-même : ne pas le fermer
+      closeMenu();
+    }, true);
     window.addEventListener("resize", ()=>{ if(menu.classList.contains("open")) closeMenu(); });
 
     build();
@@ -1592,6 +1610,8 @@
     if(!results.length){ section.style.display = "none"; return; }
     section.style.display = "block";
     row.innerHTML = "";
+    row.dataset.wheelEnabled = ""; // le nœud est neuf à chaque ouverture (innerHTML du modal recréé)
+    enableWheelHorizontalScroll(row);
     results.forEach(r=>{
       const dup = findDuplicate(r);
       const div = document.createElement("div");
@@ -1812,6 +1832,11 @@
 
   /* ===================== Wiring ===================== */
   function init(){
+    [document.getElementById("searchCatTabs"), document.getElementById("libraryCatTabs"),
+     document.querySelector(".filters-row"), document.getElementById("resumeRow")].forEach(el=>{
+      if(el) enableWheelHorizontalScroll(el);
+    });
+
     document.getElementById("searchCatTabs").addEventListener("click", (e)=>{
       const btn = e.target.closest(".cat-tab");
       if(!btn) return;

@@ -182,6 +182,8 @@
 
   .filters-row{display:flex; align-items:center; gap:10px;}
   .actions-row{display:flex; align-items:center; gap:8px; margin-left:auto;}
+  .actions-icons{display:flex; align-items:center; gap:8px;}
+  .mobile-tabbar{display:none;}
   .icon-btn.active-tool{background:var(--accent); color:#fff;}
 
   .bulk-bar{
@@ -253,10 +255,18 @@
   .fav-btn{
     position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%;
     background:rgba(0,0,0,0.45); backdrop-filter:blur(8px); border:none; cursor:pointer;
-    color:#fff; display:flex; align-items:center; justify-content:center; transition:transform .12s;
+    color:#fff; display:flex; align-items:center; justify-content:center; transition:transform .12s, color .15s;
   }
   .fav-btn:hover{transform:scale(1.08);}
   .fav-btn.on{color:#ff453a;}
+  #modalFavBtn{transition:transform .12s, color .15s, background-color .15s;}
+  @keyframes favPop{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.35);}
+    65%{transform:scale(0.92);}
+    100%{transform:scale(1);}
+  }
+  .fav-pop{animation:favPop .38s cubic-bezier(.34,1.56,.64,1);}
   .card-body{padding:9px 2px 0;}
   .card-body .title{font-size:13.5px; font-weight:590; line-height:1.3; margin-bottom:2px;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
@@ -314,6 +324,20 @@
   .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
 
   .status-pills{display:flex; gap:6px; flex-wrap:wrap;}
+
+  .season-row{display:flex; align-items:center; gap:10px;}
+  .season-row .season-name{flex:1; font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .season-row .season-watched-input{
+    width:56px; background:rgba(118,118,128,0.20); border:1px solid transparent; border-radius:8px;
+    padding:6px 8px; color:var(--text); font-family:inherit; font-size:13px; text-align:center; outline:none;
+  }
+  .season-row .season-watched-input:focus{border-color:var(--accent);}
+  .season-row .season-total{font-size:12.5px; color:var(--text-faint); flex-shrink:0;}
+  .season-row .season-mark-done{
+    width:26px; height:26px; border-radius:50%; background:rgba(118,118,128,0.20); border:none;
+    color:var(--text-muted); cursor:pointer; font-size:13px; flex-shrink:0; transition:all .15s;
+  }
+  .season-row .season-mark-done:hover{background:var(--accent); color:#fff;}
   .status-pill{
     padding:7px 13px; border-radius:var(--radius-pill); font-size:12.5px; font-weight:590; cursor:pointer;
     border:none; color:var(--text-muted); background:rgba(118,118,128,0.20); font-family:inherit;
@@ -365,8 +389,9 @@
     body{font-size:15px;}
 
     /* --- Top bar: brand+settings on row 1, search on row 2, search categories on row 3 --- */
-    .topbar{flex-wrap:wrap; padding:10px 14px; gap:10px;}
+    .topbar{flex-wrap:wrap; padding:10px 14px; gap:8px;}
     .brand{order:1;}
+    .brand .name{font-size:18px;}
     #settingsBtn{order:2; margin-left:auto;}
     .searchwrap{order:3; max-width:none; width:100%; flex-basis:100%;}
     #searchCatTabs{order:4; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
@@ -375,16 +400,36 @@
     .cat-tabs::-webkit-scrollbar{display:none;}
     .cat-tab{padding:8px 14px;}
 
-    /* --- Subnav: stacked, scrollable rows --- */
-    .subnav{padding:12px 14px 6px; gap:10px;}
-    .view-tabs{order:1;}
-    #libraryCatTabs{order:2; width:100%; flex-basis:100%;}
-    .filters-row{order:3; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; scrollbar-width:none;}
+    /* --- Subnav: la bascule Bibliothèque/Statistiques passe en barre basse,
+       ce qui laisse la place ici pour les filtres, plus compacts --- */
+    .subnav{padding:10px 14px 8px; gap:8px;}
+    .view-tabs{display:none;}
+    #libraryCatTabs{order:1; width:100%; flex-basis:100%;}
+    .filters-row{order:2; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; scrollbar-width:none;}
     .filters-row::-webkit-scrollbar{display:none;}
     .filters-row > *{flex-shrink:0;}
-    .actions-row{order:4; width:100%; flex-basis:100%; justify-content:space-between; margin-left:0;}
+    .actions-row{order:3; width:100%; flex-basis:100%; justify-content:space-between; margin-left:0; padding-top:2px;}
 
-    main{padding:4px 14px 70px;}
+    main{padding:2px 14px 100px;}
+
+    /* --- Barre de navigation basse façon application mobile --- */
+    .mobile-tabbar{
+      display:flex; position:fixed; left:0; right:0; bottom:0; z-index:140;
+      background:rgba(0,0,0,0.86); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px);
+      border-top:1px solid var(--line);
+      padding:6px 10px calc(6px + env(safe-area-inset-bottom)) 10px;
+    }
+    .mobile-tabbar .view-tab{
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+      padding:6px 4px; border-radius:10px; background:none; border:none;
+      color:var(--text-faint); font-size:10.5px; font-weight:590; font-family:inherit;
+    }
+    .mobile-tabbar .view-tab svg{width:21px; height:21px; stroke-width:1.8;}
+    .mobile-tabbar .view-tab.active{color:var(--accent);}
+
+    /* --- Éléments fixes en bas : on les remonte au-dessus de la barre de nav --- */
+    .bulk-bar{bottom:calc(20px + 58px + env(safe-area-inset-bottom));}
+    .toast{bottom:calc(20px + 58px + env(safe-area-inset-bottom));}
 
     /* --- Bigger touch targets --- */
     .icon-btn{width:38px; height:38px;}
@@ -393,26 +438,28 @@
     .custom-select-trigger{padding:9px 13px;}
 
     /* --- Grid: 2 comfortable columns on narrow phones --- */
-    .grid{grid-template-columns:repeat(auto-fill, minmax(128px,1fr)); gap:16px 12px;}
+    .grid{grid-template-columns:repeat(auto-fill, minmax(128px,1fr)); gap:18px 12px;}
+    .card-body{padding:8px 1px 0;}
 
     /* --- Modal: near-fullscreen sheet --- */
     .overlay{padding:0; align-items:stretch;}
     .modal{flex-direction:column; max-width:none; width:100%; min-height:100%; margin-bottom:0; border-radius:0; border:none;}
     .modal-poster{width:100%; height:44vw; min-height:180px; max-height:280px;}
-    .modal-body{padding:18px 18px 28px;}
+    .modal-body{padding:18px 18px calc(28px + env(safe-area-inset-bottom));}
     .field-row{gap:10px;}
     .field{min-width:100px;}
 
     /* --- Settings modal: same near-fullscreen treatment --- */
-    .settings-modal{max-width:none; width:100%; min-height:100%; border-radius:0; border:none; padding:22px 18px 28px;}
+    .settings-modal{max-width:none; width:100%; min-height:100%; border-radius:0; border:none; padding:22px 18px calc(28px + env(safe-area-inset-bottom));}
 
     /* --- Stats --- */
     .stats-grid{grid-template-columns:repeat(2, 1fr);}
   }
 
   @media (max-width:380px){
-    .grid{grid-template-columns:repeat(auto-fill, minmax(112px,1fr)); gap:14px 10px;}
-    .brand .name{font-size:17px;}
+    .grid{grid-template-columns:repeat(auto-fill, minmax(112px,1fr)); gap:16px 10px;}
+    .brand .name{font-size:16px;}
+    .mobile-tabbar .view-tab span{font-size:10px;}
   }
 </style>
 </head>
@@ -481,18 +528,31 @@
   </div>
   <div class="actions-row">
     <span class="count-pill" id="countPill"></span>
-    <button class="icon-btn" id="selectModeBtn" title="Sélection multiple">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 20 6"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-    </button>
-    <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </button>
-    <button class="icon-btn" id="importBtn" title="Importer (JSON)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    </button>
+    <div class="actions-icons">
+      <button class="icon-btn" id="selectModeBtn" title="Sélection multiple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 20 6"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      </button>
+      <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="icon-btn" id="importBtn" title="Importer (JSON)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </button>
+    </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
   </div>
 </div>
+
+<nav class="mobile-tabbar">
+  <button class="view-tab active" data-view="library">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span>Bibliothèque</span>
+  </button>
+  <button class="view-tab" data-view="stats">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Statistiques</span>
+  </button>
+</nav>
 
 <div class="bulk-bar" id="bulkBar" style="display:none;">
   <span id="bulkCount"></span>
@@ -721,11 +781,17 @@
       const res = await fetch(url);
       if(!res.ok) return {};
       const d = await res.json();
+      const seasonsList = (type === "tv" && Array.isArray(d.seasons))
+        ? d.seasons.filter(s => s.season_number > 0 && s.episode_count > 0).map(s => ({
+            season: s.season_number, name: s.name || `Saison ${s.season_number}`, total: s.episode_count
+          }))
+        : [];
       return {
         genres: (d.genres||[]).map(g=>g.name),
         runtime: d.runtime || (d.episode_run_time && d.episode_run_time[0]) || null,
         totalSeasons: d.number_of_seasons || null,
-        totalEpisodes: d.number_of_episodes || null
+        totalEpisodes: d.number_of_episodes || null,
+        seasonsList
       };
     }catch(e){ return {}; }
   }
@@ -1004,6 +1070,9 @@
       runtime: details.runtime || null,
       totalSeasons: details.totalSeasons || null,
       totalEpisodes: details.totalEpisodes || (r.extra && r.extra.totalEpisodes) || null,
+      seasonsData: (details.seasonsList && details.seasonsList.length)
+        ? details.seasonsList.map(s => ({ season: s.season, name: s.name, total: s.total, watched: 0 }))
+        : [],
       playtimeHint: (r.extra && r.extra.playtimeHint) || null,
       artist: (r.extra && r.extra.artist) || "",
       album: (r.extra && r.extra.album) || "",
@@ -1019,8 +1088,6 @@
       ranking: null,
       favorite: false,
       playlists: "",
-      dateStart: "",
-      dateEnd: "",
       dateAdded: new Date().toISOString()
     };
     const id = await dbPut(item);
@@ -1034,6 +1101,18 @@
 
   function escapeHtml(s){
     return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  // Met à jour l'apparence d'un bouton favori (cœur) sans jamais reconstruire la carte/fiche parente.
+  function updateFavButtonUI(btn, isFav){
+    if(!btn) return;
+    btn.classList.toggle("on", isFav);
+    btn.title = isFav ? "Retirer des favoris" : "Ajouter aux favoris";
+    btn.style.color = isFav ? "#ff453a" : "";
+    const svg = btn.querySelector("svg");
+    if(svg) svg.setAttribute("fill", isFav ? "currentColor" : "none");
+    btn.classList.remove("fav-pop");
+    requestAnimationFrame(()=> btn.classList.add("fav-pop"));
   }
 
   // Permet de faire défiler horizontalement une rangée avec la molette verticale classique
@@ -1319,9 +1398,13 @@
         card.addEventListener("click", ()=> openDetail(it.id));
         card.querySelector(".fav-btn").addEventListener("click", async (e)=>{
           e.stopPropagation();
+          const btn = e.currentTarget; // capturé AVANT le await, pour la même raison
           it.favorite = !it.favorite;
-          await dbPut(it);
-          renderLibrary();
+          try{ await dbPut(it); }catch(err){ console.error("dbPut favori (carte) :", err); }
+          updateFavButtonUI(btn, it.favorite);
+          if(document.getElementById("sortBy").value === "favorites_first"){
+            renderLibrary();
+          }
         });
       }
       grid.appendChild(card);
@@ -1355,6 +1438,7 @@
     const showEpisodes = it.category === "serie" || it.category === "anime";
     const showGame = it.category === "jeu";
     const showMusic = it.category === "musique";
+    const hasSeasons = it.category === "serie" && Array.isArray(it.seasonsData) && it.seasonsData.length > 0;
 
     function fmtDuration(ms){
       if(!ms) return "";
@@ -1405,7 +1489,7 @@
               ${Array.from({length:20}, (_,i)=>(i+1)*0.5).map(v=>`<option value="${v}" ${it.userRating===v?"selected":""}>${v}</option>`).join("")}
             </select>
           </div>
-          ${showEpisodes ? `
+          ${(showEpisodes && !hasSeasons) ? `
           <div class="field">
             <label>Épisodes vus${it.totalEpisodes?` / ${it.totalEpisodes}`:""}</label>
             <input type="number" id="epWatched" min="0" ${it.totalEpisodes?`max="${it.totalEpisodes}"`:""} value="${it.episodesWatched||0}">
@@ -1426,6 +1510,21 @@
           </div>` : ""}
         </div>
 
+        ${hasSeasons ? `
+        <div class="field">
+          <label>Progression par saison</label>
+          <div id="seasonsList" style="display:flex; flex-direction:column; gap:8px;">
+            ${it.seasonsData.map((s,idx)=>`
+              <div class="season-row" data-idx="${idx}">
+                <span class="season-name">${escapeHtml(s.name)}</span>
+                <input type="number" class="season-watched-input" data-idx="${idx}" min="0" max="${s.total}" value="${s.watched||0}">
+                <span class="season-total">/ ${s.total}</span>
+                <button type="button" class="season-mark-done" data-idx="${idx}" title="Marquer la saison comme vue">✓</button>
+              </div>
+            `).join("")}
+          </div>
+        </div>` : ""}
+
         ${showMusic ? `
         <div class="field">
           <label>Playlist(s)</label>
@@ -1445,17 +1544,6 @@
           </div>
         </div>` : ""}
 
-        <div class="field-row">
-          <div class="field">
-            <label>Date de début</label>
-            <input type="date" id="dateStart" value="${it.dateStart||""}">
-          </div>
-          <div class="field">
-            <label>Date de fin</label>
-            <input type="date" id="dateEnd" value="${it.dateEnd||""}">
-          </div>
-        </div>
-
         <div class="field">
           <label>Notes personnelles</label>
           <textarea id="notesArea" placeholder="Tes impressions, ce qu'il te reste à voir…">${escapeHtml(it.notes||"")}</textarea>
@@ -1469,11 +1557,12 @@
     `;
 
     document.getElementById("closeDetail").addEventListener("click", closeDetail);
-    document.getElementById("modalFavBtn").addEventListener("click", async ()=>{
+    document.getElementById("modalFavBtn").addEventListener("click", async (e)=>{
+      const btn = e.currentTarget; // capturé AVANT le await : currentTarget devient invalide après une attente asynchrone
       it.favorite = !it.favorite;
-      await dbPut(it);
-      openDetail(it.id);
-      renderLibrary();
+      try{ await dbPut(it); }catch(err){ console.error("dbPut favori (fiche) :", err); }
+      updateFavButtonUI(btn, it.favorite);
+      renderLibrary(); // ne touche que la grille en arrière-plan, jamais la fiche ouverte
     });
     document.getElementById("statusPills").addEventListener("click", (e)=>{
       const btn = e.target.closest(".status-pill");
@@ -1491,6 +1580,16 @@
     ratingSelect.addEventListener("change", ()=>{
       pendingRating = parseFloat(ratingSelect.value) || 0;
     });
+
+    if(hasSeasons){
+      document.getElementById("seasonsList").addEventListener("click", (e)=>{
+        const btn = e.target.closest(".season-mark-done");
+        if(!btn) return;
+        const idx = btn.dataset.idx;
+        const input = document.querySelector(`.season-watched-input[data-idx="${idx}"]`);
+        if(input) input.value = input.max;
+      });
+    }
 
     if(showMusic){
       const plContainer = document.getElementById("playlistCheckboxes");
@@ -1553,7 +1652,19 @@
     document.getElementById("saveItem").addEventListener("click", async ()=>{
       it.status = modal.dataset.pendingStatus;
       it.userRating = pendingRating;
-      if(showEpisodes) it.episodesWatched = parseInt(document.getElementById("epWatched").value) || 0;
+      if(hasSeasons){
+        let totalWatched = 0;
+        document.querySelectorAll(".season-watched-input").forEach(input=>{
+          const idx = parseInt(input.dataset.idx);
+          const max = it.seasonsData[idx].total;
+          const val = Math.min(max, Math.max(0, parseInt(input.value) || 0));
+          it.seasonsData[idx].watched = val;
+          totalWatched += val;
+        });
+        it.episodesWatched = totalWatched;
+      } else if(showEpisodes){
+        it.episodesWatched = parseInt(document.getElementById("epWatched").value) || 0;
+      }
       if(showGame){
         it.percentComplete = Math.min(100, Math.max(0, parseInt(document.getElementById("pctComplete").value) || 0));
         it.hoursPlayed = parseFloat(document.getElementById("hoursPlayed").value) || 0;
@@ -1564,8 +1675,6 @@
         const checkedPlaylists = [...document.querySelectorAll("#playlistCheckboxes .playlist-check:checked")].map(cb=>cb.value);
         it.playlists = checkedPlaylists.join(", ");
       }
-      it.dateStart = document.getElementById("dateStart").value;
-      it.dateEnd = document.getElementById("dateEnd").value;
       it.notes = document.getElementById("notesArea").value;
       await dbPut(it);
       closeDetail();

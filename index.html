@@ -1151,6 +1151,14 @@
     requestAnimationFrame(()=> btn.classList.add("fav-pop"));
   }
 
+  // Met à jour le cœur d'une carte précise dans la grille en arrière-plan, sans
+  // reconstruire toute la grille (évite le clignotement du fond, surtout visible
+  // sur mobile/tablette derrière le flou de l'overlay quand la fiche est ouverte).
+  function syncCardFavorite(id, isFav){
+    const btn = document.querySelector(`.fav-btn[data-fav-id="${id}"]`);
+    if(btn) updateFavButtonUI(btn, isFav);
+  }
+
   // Permet de faire défiler horizontalement une rangée avec la molette verticale classique
   // (comportement natif sur trackpad, mais pas avec une souris standard sans cela).
   function enableWheelHorizontalScroll(el){
@@ -1598,7 +1606,10 @@
       it.favorite = !it.favorite;
       try{ await dbPut(it); }catch(err){ console.error("dbPut favori (fiche) :", err); }
       updateFavButtonUI(btn, it.favorite);
-      renderLibrary(); // ne touche que la grille en arrière-plan, jamais la fiche ouverte
+      syncCardFavorite(it.id, it.favorite); // met à jour la carte en fond sans reconstruire toute la grille
+      if(document.getElementById("sortBy").value === "favorites_first"){
+        renderLibrary(); // seul cas où l'ordre des cartes doit être recalculé
+      }
     });
     document.getElementById("statusPills").addEventListener("click", (e)=>{
       const btn = e.target.closest(".status-pill");

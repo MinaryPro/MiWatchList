@@ -140,6 +140,13 @@
   .result-info .meta{font-size:12px; color:var(--text-muted); margin-top:2px;}
   .result-add{margin-left:auto; font-size:12.5px; color:var(--accent); font-weight:590; flex-shrink:0;}
   .result-empty{padding:20px; color:var(--text-muted); font-size:13px; text-align:center;}
+  .result-manual-add{
+    padding:12px 16px; font-size:12.5px; color:var(--accent); font-weight:590;
+    text-align:center; cursor:pointer; border-top:1px solid var(--line); transition:background .15s;
+  }
+  .result-manual-add:hover{background:var(--bg-card-hover);}
+  .manual-add-form{padding:14px 16px 16px;}
+  .manual-add-form .field-row{margin-top:0;}
 
   /* ---------- nav secondary ---------- */
   .subnav{
@@ -471,9 +478,15 @@
     .close-x{width:30px; height:30px; font-size:16px;}
     .custom-select-trigger{padding:9px 13px;}
 
-    /* --- Grid: 2 comfortable columns on narrow phones --- */
-    .grid{grid-template-columns:repeat(auto-fill, minmax(128px,1fr)); gap:18px 12px;}
+    /* --- Grid: 4 colonnes fixes sur mobile/tablette (au lieu d'auto-fill,
+       qui pouvait laisser une marge de droite inégale selon la largeur exacte) --- */
+    .grid{grid-template-columns:repeat(4, 1fr); gap:16px 10px;}
     .card-body{padding:8px 1px 0;}
+    .card-body .title{font-size:12px;}
+    .card-body .sub{font-size:10.5px;}
+    .status-badge{font-size:9px; padding:2px 7px; top:6px; right:6px;}
+    .fav-btn{width:24px; height:24px; top:6px; left:6px;}
+    .fav-btn svg{width:12px; height:12px;}
 
     /* --- Modal: near-fullscreen sheet (slides up from bottom, no scale = no jitter on mobile) --- */
     .overlay{padding:0; align-items:stretch;}
@@ -493,7 +506,10 @@
   }
 
   @media (max-width:380px){
-    .grid{grid-template-columns:repeat(auto-fill, minmax(112px,1fr)); gap:16px 10px;}
+    .grid{grid-template-columns:repeat(4, 1fr); gap:12px 7px;}
+    .card-body{padding:7px 0 0;}
+    .card-body .title{font-size:11px;}
+    .card-body .sub{font-size:10px;}
     .brand .name{font-size:16px;}
     .mobile-tabbar .view-tab span{font-size:10px;}
   }
@@ -517,6 +533,7 @@
     <button class="cat-tab" data-cat="anime">Animé</button>
     <button class="cat-tab" data-cat="jeu">Jeu vidéo</button>
     <button class="cat-tab" data-cat="musique">Musique</button>
+    <button class="cat-tab" data-cat="livre">Livre</button>
   </div>
   <button class="icon-btn" id="settingsBtn" title="Clés API">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3.4a2 2 0 110-4h.09A1.65 1.65 0 005 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 5c.6-.25 1-.84 1-1.51V3.4a2 2 0 114 0v.09c0 .67.4 1.26 1 1.51.62.26 1.35.13 1.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06c-.46.47-.59 1.2-.33 1.82.25.6.84 1 1.51 1H21a2 2 0 110 4h-.09c-.67 0-1.26.4-1.51 1z"/></svg>
@@ -535,6 +552,7 @@
     <button class="cat-tab" data-cat="anime">Animés</button>
     <button class="cat-tab" data-cat="jeu">Jeux</button>
     <button class="cat-tab" data-cat="musique">Musique</button>
+    <button class="cat-tab" data-cat="livre">Livres</button>
   </div>
   <div class="filters-row">
     <select id="filterPlaylist" style="display:none;">
@@ -731,7 +749,7 @@
   let selectionMode = false;
   let selectedIds = new Set();
 
-  const ALL_CATEGORIES = ["film","serie","anime","jeu","musique"];
+  const ALL_CATEGORIES = ["film","serie","anime","jeu","musique","livre"];
   let categoryVisibility = {};
   try{
     categoryVisibility = JSON.parse(localStorage.getItem("bobine_cat_visibility") || "{}");
@@ -766,7 +784,7 @@
   const STATUS_COLORS = {
     a_voir:"#0a84ff", en_cours:"#ff9f0a", pause:"#8e8e93", termine:"#30d158", abandonne:"#ff453a"
   };
-  const CAT_LABELS = { film:"Film", serie:"Série", anime:"Animé", jeu:"Jeu vidéo", musique:"Musique" };
+  const CAT_LABELS = { film:"Film", serie:"Série", anime:"Animé", jeu:"Jeu vidéo", musique:"Musique", livre:"Livre" };
 
   /* ===================== Toast ===================== */
   function toast(msg, opts){
@@ -835,18 +853,38 @@
   async function fetchSimilarTMDB(it){
     if(!settings.tmdbKey) return [];
     const type = it.category === "film" ? "movie" : "tv";
+    const mapResults = (results) => (results||[]).slice(0,15).map(r=>({
+      source:"tmdb", externalId:r.id, category: type==="movie" ? "film" : "serie",
+      title: r.title || r.name,
+      year: (r.release_date||r.first_air_date||"").slice(0,4),
+      poster: r.poster_path ? `https://image.tmdb.org/t/p/w300${r.poster_path}` : null,
+      overview: r.overview || "", rating: r.vote_average || null, genres: [], extra: {}
+    }));
+    // Écarte les entrées trop confidentielles/mal notées (souvent hors-sujet),
+    // mais seulement s'il reste assez de résultats derrière, sinon on garde tout.
+    const filterQuality = (list) => {
+      const filtered = list.filter(r => r.rating === null || r.rating >= 5.5);
+      return filtered.length >= 4 ? filtered.slice(0,10) : list.slice(0,10);
+    };
     try{
-      const url = `https://api.themoviedb.org/3/${type}/${it.externalId}/similar?api_key=${encodeURIComponent(settings.tmdbKey)}&language=fr-FR`;
-      const res = await fetch(url);
-      if(!res.ok) return [];
-      const data = await res.json();
-      return (data.results||[]).slice(0,10).map(r=>({
-        source:"tmdb", externalId:r.id, category: type==="movie" ? "film" : "serie",
-        title: r.title || r.name,
-        year: (r.release_date||r.first_air_date||"").slice(0,4),
-        poster: r.poster_path ? `https://image.tmdb.org/t/p/w300${r.poster_path}` : null,
-        overview: r.overview || "", rating: r.vote_average || null, genres: [], extra: {}
-      }));
+      // "recommendations" se base sur les visionnages réels des utilisateurs TMDB
+      // (les gens qui ont vu ce titre ont aussi vu...) : nettement plus pertinent
+      // que "similar", qui ne fait que comparer genres/mots-clés et sort parfois
+      // des titres sans rapport réel.
+      const recoUrl = `https://api.themoviedb.org/3/${type}/${it.externalId}/recommendations?api_key=${encodeURIComponent(settings.tmdbKey)}&language=fr-FR`;
+      const recoRes = await fetch(recoUrl);
+      if(recoRes.ok){
+        const recoData = await recoRes.json();
+        const mapped = mapResults(recoData.results);
+        if(mapped.length) return filterQuality(mapped);
+      }
+      // Secours : certains titres (trop récents/confidentiels) n'ont pas assez
+      // de données pour "recommendations" ; on retombe alors sur "similar".
+      const simUrl = `https://api.themoviedb.org/3/${type}/${it.externalId}/similar?api_key=${encodeURIComponent(settings.tmdbKey)}&language=fr-FR`;
+      const simRes = await fetch(simUrl);
+      if(!simRes.ok) return [];
+      const simData = await simRes.json();
+      return filterQuality(mapResults(simData.results));
     }catch(e){ return []; }
   }
 
@@ -989,6 +1027,110 @@
     }));
   }
 
+  // Open Library : gratuit, sans clé API.
+  async function searchOpenLibraryRaw(query){
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=14&fields=key,title,author_name,first_publish_year,cover_i,number_of_pages_median,subject`;
+    let res;
+    try{
+      res = await fetch(url);
+    }catch(networkErr){
+      throw new Error("Impossible de joindre Open Library (connexion réseau)");
+    }
+    if(!res.ok) throw new Error("Open Library a renvoyé une erreur (" + res.status + ")");
+    const data = await res.json();
+    return (data.docs||[]).slice(0,14).map(d=>({
+      source:"openlibrary", externalId:(d.key||"").replace("/works/",""), category:"livre",
+      title: d.title || "Sans titre",
+      year: d.first_publish_year ? String(d.first_publish_year) : "",
+      poster: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+      overview: "",
+      rating: null,
+      genres: (d.subject||[]).slice(0,3),
+      extra: { author: (d.author_name||[]).slice(0,2).join(", "), totalPages: d.number_of_pages_median || null }
+    }));
+  }
+
+  // Google Books : gratuit, sans clé API. Open Library indexe surtout les
+  // catalogues de bibliothèques et rate souvent les livres auto-édités ou à
+  // faible tirage (fréquent en français) ; Google Books couvre bien mieux
+  // ce cas de figure, d'où la combinaison des deux sources.
+  async function searchGoogleBooksRaw(query){
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=16`;
+    let res;
+    try{
+      res = await fetch(url);
+    }catch(networkErr){
+      throw new Error("Impossible de joindre Google Books (connexion réseau)");
+    }
+    if(!res.ok) throw new Error("Google Books a renvoyé une erreur (" + res.status + ")");
+    const data = await res.json();
+    return (data.items||[]).map(item=>{
+      const v = item.volumeInfo || {};
+      const img = v.imageLinks || {};
+      let poster = img.thumbnail || img.smallThumbnail || null;
+      if(poster) poster = poster.replace(/^http:\/\//, "https://");
+      return {
+        source:"googlebooks", externalId:item.id, category:"livre",
+        title: v.title || "Sans titre",
+        year: v.publishedDate ? v.publishedDate.slice(0,4) : "",
+        poster,
+        overview: v.description || "",
+        rating: v.averageRating || null,
+        genres: v.categories || [],
+        extra: { author: (v.authors||[]).slice(0,2).join(", "), totalPages: v.pageCount || null }
+      };
+    });
+  }
+
+  function normalizeBookTitle(t){
+    return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+  }
+
+  // Interroge Open Library et Google Books en parallèle, puis fusionne en
+  // évitant les doublons (même titre trouvé dans les deux sources).
+  async function searchLivre(query){
+    const [olOutcome, gbOutcome] = await Promise.allSettled([
+      searchOpenLibraryRaw(query),
+      searchGoogleBooksRaw(query)
+    ]);
+    const olResults = olOutcome.status === "fulfilled" ? olOutcome.value : [];
+    const gbResults = gbOutcome.status === "fulfilled" ? gbOutcome.value : [];
+    if(olOutcome.status === "rejected" && gbOutcome.status === "rejected"){
+      throw new Error("Impossible de joindre Open Library et Google Books (connexion réseau)");
+    }
+    const seen = new Set();
+    const merged = [];
+    olResults.forEach(r=>{
+      const key = normalizeBookTitle(r.title);
+      if(seen.has(key)) return;
+      seen.add(key);
+      merged.push(r);
+    });
+    gbResults.forEach(r=>{
+      const key = normalizeBookTitle(r.title);
+      if(seen.has(key)) return;
+      seen.add(key);
+      merged.push(r);
+    });
+    return merged.slice(0,16);
+  }
+
+  // Détails complémentaires d'une œuvre Open Library (résumé), récupérés
+  // seulement à l'ajout (pas pendant la recherche, pour rester léger).
+  // Google Books fournit déjà le résumé directement dans les résultats de
+  // recherche, donc pas besoin d'appel supplémentaire pour cette source.
+  async function fetchOpenLibraryDetails(workId){
+    if(!workId) return {};
+    try{
+      const url = `https://openlibrary.org/works/${encodeURIComponent(workId)}.json`;
+      const res = await fetch(url);
+      if(!res.ok) return {};
+      const d = await res.json();
+      const desc = typeof d.description === "string" ? d.description : (d.description && d.description.value) || "";
+      return { overview: desc };
+    }catch(e){ return {}; }
+  }
+
   function decodeHtmlEntities(str){
     const txt = document.createElement("textarea");
     txt.innerHTML = str || "";
@@ -1040,7 +1182,8 @@
       else if(searchCategory === "anime") results = await searchAniList(query);
       else if(searchCategory === "jeu") results = await searchRAWG(query);
       else if(searchCategory === "musique") results = await searchYouTubeMusic(query);
-      renderResults(results);
+      else if(searchCategory === "livre") results = await searchLivre(query);
+      renderResults(results, query);
     }catch(e){
       panel.innerHTML = `
         <div class="result-empty">
@@ -1052,10 +1195,15 @@
     }
   }
 
-  function renderResults(results){
+  function renderResults(results, query){
     const panel = document.getElementById("resultsPanel");
+    const manualLinkHtml = `<div class="result-manual-add" id="manualAddTrigger">+ Ajouter « ${escapeHtml(query||"")} » manuellement</div>`;
     if(!results.length){
-      panel.innerHTML = `<div class="result-empty">Aucun résultat.</div>`;
+      panel.innerHTML = `<div class="result-empty">Aucun résultat.</div>` + manualLinkHtml;
+      document.getElementById("manualAddTrigger").addEventListener("click", (e)=>{
+        e.stopPropagation(); // évite que le listener "clic extérieur" ne ferme tout : on remplace le DOM juste après
+        renderManualAddForm(query);
+      });
       return;
     }
     panel.innerHTML = "";
@@ -1067,17 +1215,133 @@
         ${r.poster ? `<img class="result-poster" src="${r.poster}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'result-poster'}))">` : `<div class="result-poster"></div>`}
         <div class="result-info">
           <div class="title">${escapeHtml(r.title)}</div>
-          <div class="meta">${r.category === "musique" ? escapeHtml(r.extra.artist || "") : (r.year || "Année inconnue")}${r.rating ? " · ★ " + Number(r.rating).toFixed(1) : ""}</div>
+          <div class="meta">${r.category === "musique" ? escapeHtml(r.extra.artist || "") : (r.category === "livre" ? escapeHtml(r.extra.author || "Auteur inconnu") + (r.year ? " · "+r.year : "") : (r.year || "Année inconnue"))}${r.rating ? " · ★ " + Number(r.rating).toFixed(1) : ""}</div>
         </div>
         <div class="result-add" style="${dup?"color:var(--text-faint);":""}">${dup?"Déjà ajouté":"Ajouter"}</div>
       `;
       row.addEventListener("click", ()=> addFromResult(r));
       panel.appendChild(row);
     });
+    const manualRow = document.createElement("div");
+    manualRow.id = "manualAddTrigger";
+    manualRow.className = "result-manual-add";
+    manualRow.textContent = `+ Ajouter « ${query||""} » manuellement`;
+    manualRow.addEventListener("click", (e)=>{
+      e.stopPropagation(); // même raison : on remplace le DOM juste après, dans le même clic
+      renderManualAddForm(query);
+    });
+    panel.appendChild(manualRow);
+  }
+
+  // Formulaire d'ajout manuel : aucune base (Open Library, Google Books, TMDB...)
+  // ne référence tout, en particulier les livres auto-édités ou à faible tirage.
+  // Ce formulaire couvre les champs pertinents selon la catégorie en cours.
+  function renderManualAddForm(query){
+    const panel = document.getElementById("resultsPanel");
+    const isBook = searchCategory === "livre";
+    panel.innerHTML = `
+      <div class="manual-add-form">
+        <div style="font-size:11.5px; color:var(--text-faint); margin-bottom:10px;">Aucune base ne référence tout (livres auto-édités, titres confidentiels…) — ajoute-le toi-même.</div>
+        <div class="field">
+          <label>Titre *</label>
+          <input type="text" id="manualTitle" value="${escapeHtml(query||"")}">
+        </div>
+        <div class="field-row">
+          ${isBook ? `<div class="field"><label>Auteur</label><input type="text" id="manualAuthor"></div>` : ""}
+          <div class="field"><label>Année</label><input type="text" id="manualYear" placeholder="ex : 2024"></div>
+          ${isBook ? `<div class="field"><label>Pages</label><input type="number" id="manualPages" min="0" placeholder="ex : 252"></div>` : ""}
+        </div>
+        <div class="field">
+          <label>Image de couverture (lien direct vers l'image, optionnel)</label>
+          <input type="text" id="manualPoster" placeholder="https://….jpg">
+          <div style="font-size:10.5px; color:var(--text-faint); margin-top:5px; line-height:1.4;">
+            Un lien de page produit (ex : amazon.fr/dp/…) ne fonctionnera pas. Sur Amazon : clic droit sur l'image du livre → « Copier l'adresse de l'image ».
+          </div>
+          <div id="manualPosterPreviewWrap" style="display:none; margin-top:8px;">
+            <img id="manualPosterPreview" style="width:56px; height:84px; object-fit:cover; border-radius:6px; border:1px solid var(--line); vertical-align:middle;">
+            <span id="manualPosterPreviewMsg" style="font-size:11.5px; color:var(--text-faint); margin-left:8px;"></span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="btn" id="manualCancel" style="flex:1;">Annuler</button>
+          <button class="btn btn-primary" id="manualSubmit" style="flex:1;">Ajouter</button>
+        </div>
+      </div>
+    `;
+    // Aperçu en direct : on vérifie que le lien pointe bien vers une image
+    // avant l'ajout, pour éviter la surprise d'une fiche sans couverture.
+    let posterPreviewTimer = null;
+    document.getElementById("manualPoster").addEventListener("input", (e)=>{
+      clearTimeout(posterPreviewTimer);
+      const url = e.target.value.trim();
+      const wrap = document.getElementById("manualPosterPreviewWrap");
+      const img = document.getElementById("manualPosterPreview");
+      const msg = document.getElementById("manualPosterPreviewMsg");
+      if(!url){ wrap.style.display = "none"; return; }
+      posterPreviewTimer = setTimeout(()=>{
+        wrap.style.display = "block";
+        msg.textContent = "Vérification…";
+        img.style.visibility = "hidden";
+        const tester = new Image();
+        tester.onload = ()=>{ img.src = url; img.style.visibility = "visible"; msg.textContent = "Image trouvée ✓"; };
+        tester.onerror = ()=>{ img.style.visibility = "hidden"; msg.textContent = "⚠ Ce lien ne pointe pas vers une image valide (pas une page produit)."; };
+        tester.src = url;
+      }, 400);
+    });
+    document.getElementById("manualCancel").addEventListener("click", (e)=>{
+      e.stopPropagation(); // runSearch() remplace aussi le DOM immédiatement : même précaution
+      runSearch(query);
+    });
+    document.getElementById("manualTitle").focus();
+    document.getElementById("manualSubmit").addEventListener("click", async (e)=>{
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      const title = document.getElementById("manualTitle").value.trim();
+      if(!title){ toast("Le titre est obligatoire"); document.getElementById("manualTitle").focus(); return; }
+      const poster = document.getElementById("manualPoster").value.trim() || null;
+      const year = document.getElementById("manualYear").value.trim();
+      const item = {
+        category: searchCategory, source: "manual", externalId: "manual-" + Date.now(),
+        title, year, poster, overview: "", extRating: null, genres: [],
+        runtime: null, totalSeasons: null, totalEpisodes: null, seasonsData: [],
+        playtimeHint: null, artist: "", album: "", durationMs: null, videoId: null,
+        author: isBook ? document.getElementById("manualAuthor").value.trim() : "",
+        totalPages: isBook ? (parseInt(document.getElementById("manualPages").value) || null) : null,
+        currentPage: 0
+      };
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = "Ajout…";
+      try{
+        await commitNewItem(item);
+      }catch(err){
+        console.error("Ajout manuel :", err);
+        toast("Erreur lors de l'ajout : " + (err && err.message ? err.message : "cause inconnue"));
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    });
   }
 
   function findDuplicate(r){
     return items.find(it => it.category === r.category && it.source === r.source && String(it.externalId) === String(r.externalId));
+  }
+
+  // Finalise et enregistre un nouvel item (recherche automatique ou ajout manuel) :
+  // ajoute les champs de suivi communs, sauvegarde en base et rafraîchit l'UI.
+  async function commitNewItem(item){
+    Object.assign(item, {
+      status: "a_voir", userRating: 0, notes: "", episodesWatched: 0, hoursPlayed: 0,
+      percentComplete: 0, ranking: null, favorite: false, playlists: "",
+      dateAdded: new Date().toISOString()
+    });
+    const id = await dbPut(item);
+    item.id = id;
+    items.push(item);
+    document.getElementById("resultsPanel").classList.remove("open");
+    document.getElementById("searchInput").value = "";
+    toast(`« ${item.title} » ajouté à ta bibliothèque`);
+    renderLibrary();
   }
 
   async function addFromResult(r){
@@ -1092,6 +1356,8 @@
     let details = {};
     if(r.source === "tmdb"){
       details = await fetchTMDBDetails(r.externalId, r.category === "film" ? "movie" : "tv");
+    } else if(r.source === "openlibrary"){
+      details = await fetchOpenLibraryDetails(r.externalId);
     }
     const item = {
       category: r.category,
@@ -1100,7 +1366,7 @@
       title: r.title,
       year: r.year || "",
       poster: r.poster,
-      overview: r.overview,
+      overview: details.overview || r.overview,
       extRating: r.rating,
       genres: details.genres && details.genres.length ? details.genres : r.genres,
       runtime: details.runtime || null,
@@ -1114,25 +1380,16 @@
       album: (r.extra && r.extra.album) || "",
       durationMs: (r.extra && r.extra.durationMs) || null,
       videoId: (r.extra && r.extra.videoId) || null,
-
-      status: "a_voir",
-      userRating: 0,
-      notes: "",
-      episodesWatched: 0,
-      hoursPlayed: 0,
-      percentComplete: 0,
-      ranking: null,
-      favorite: false,
-      playlists: "",
-      dateAdded: new Date().toISOString()
+      author: (r.extra && r.extra.author) || "",
+      totalPages: (r.extra && r.extra.totalPages) || null,
+      currentPage: 0
     };
-    const id = await dbPut(item);
-    item.id = id;
-    items.push(item);
-    document.getElementById("resultsPanel").classList.remove("open");
-    document.getElementById("searchInput").value = "";
-    toast(`« ${item.title} » ajouté à ta bibliothèque`);
-    renderLibrary();
+    try{
+      await commitNewItem(item);
+    }catch(err){
+      console.error("Ajout depuis résultat de recherche :", err);
+      toast("Erreur lors de l'ajout : " + (err && err.message ? err.message : "cause inconnue"));
+    }
   }
 
   function escapeHtml(s){
@@ -1313,8 +1570,16 @@
     return list;
   }
 
+  function progressPercent(it){
+    if(it.category === "jeu") return it.percentComplete||0;
+    if(it.category === "livre") return it.totalPages ? Math.min(100, Math.round((it.currentPage||0)/it.totalPages*100)) : 0;
+    if(it.totalEpisodes) return Math.min(100, Math.round((it.episodesWatched||0)/it.totalEpisodes*100));
+    return 0;
+  }
+
   function progressLabel(it){
     if(it.category === "jeu") return it.percentComplete ? `${it.percentComplete}%` : "";
+    if(it.category === "livre") return it.totalPages ? `P. ${it.currentPage||0}/${it.totalPages}` : (it.currentPage ? `P. ${it.currentPage}` : "");
     if((it.category === "serie" || it.category === "anime") && it.totalEpisodes){
       return `Ép. ${it.episodesWatched||0}/${it.totalEpisodes}`;
     }
@@ -1381,11 +1646,11 @@
     section.style.display = "block";
     row.innerHTML = "";
     inProgress.forEach(it=>{
-      const pct = it.category === "jeu" ? (it.percentComplete||0)
-        : (it.totalEpisodes ? Math.min(100, Math.round((it.episodesWatched||0)/it.totalEpisodes*100)) : 0);
+      const pct = progressPercent(it);
       const sub = it.category === "musique" ? escapeHtml(it.artist||"")
         : (it.category === "jeu" ? `${it.percentComplete||0}%`
-        : (it.totalEpisodes ? `Ép. ${it.episodesWatched||0}/${it.totalEpisodes}` : CAT_LABELS[it.category]));
+        : (it.category === "livre" ? (progressLabel(it) || escapeHtml(it.author||"") || CAT_LABELS[it.category])
+        : (it.totalEpisodes ? `Ép. ${it.episodesWatched||0}/${it.totalEpisodes}` : CAT_LABELS[it.category])));
       const card = document.createElement("div");
       card.className = "resume-card";
       card.innerHTML = `
@@ -1413,8 +1678,7 @@
     list.forEach(it=>{
       const card = document.createElement("div");
       card.className = "card";
-      const pct = it.category === "jeu" ? (it.percentComplete||0)
-        : (it.totalEpisodes ? Math.min(100, Math.round((it.episodesWatched||0)/it.totalEpisodes*100)) : 0);
+      const pct = progressPercent(it);
       const isSelected = selectedIds.has(it.id);
       card.innerHTML = `
         <div class="poster-wrap">
@@ -1428,7 +1692,7 @@
         </div>
         <div class="card-body">
           <div class="title">${escapeHtml(it.title)}</div>
-          <div class="sub"><span>${it.category === "musique" ? escapeHtml(it.artist||"") : (CAT_LABELS[it.category] + (it.year ? " · "+it.year : ""))}</span><span>${it.ranking ? "#"+it.ranking : (it.userRating ? "★ "+it.userRating : "")}</span></div>
+          <div class="sub"><span>${(it.category === "musique" || it.category === "livre") ? escapeHtml((it.category==="livre"?it.author:it.artist)||"") : (CAT_LABELS[it.category] + (it.year ? " · "+it.year : ""))}</span><span>${it.ranking ? "#"+it.ranking : (it.userRating ? "★ "+it.userRating : "")}</span></div>
           ${pct > 0 ? `<div class="progress-bar"><div style="width:${pct}%"></div></div>` : ""}
         </div>
       `;
@@ -1482,6 +1746,7 @@
     const showEpisodes = it.category === "serie" || it.category === "anime";
     const showGame = it.category === "jeu";
     const showMusic = it.category === "musique";
+    const showBook = it.category === "livre";
     const hasSeasons = it.category === "serie" && Array.isArray(it.seasonsData) && it.seasonsData.length > 0;
 
     function fmtDuration(ms){
@@ -1500,6 +1765,8 @@
             <div class="modal-meta">${
               showMusic
                 ? `${escapeHtml(it.artist||"")}${it.album?" · "+escapeHtml(it.album):""}${it.durationMs?" · "+fmtDuration(it.durationMs):""}${it.year?" · "+it.year:""}`
+                : showBook
+                ? `${escapeHtml(it.author||"Auteur inconnu")}${it.year?" · "+it.year:""}${it.genres&&it.genres.length? " · "+it.genres.slice(0,3).join(", "):""}`
                 : `${CAT_LABELS[it.category]} ${it.year?"· "+it.year:""} ${it.extRating?"· note publique "+Number(it.extRating).toFixed(1):""} ${it.genres&&it.genres.length? "· "+it.genres.slice(0,3).join(", "):""}`
             }</div>
             <div id="nextEpisodeInfo" style="display:none; font-size:12.5px; color:var(--accent); margin-top:5px; font-weight:590;"></div>
@@ -1551,6 +1818,15 @@
           <div class="field">
             <label>Mon classement (top)</label>
             <input type="number" id="rankInput" min="1" step="1" placeholder="ex : 1" value="${it.ranking||""}">
+          </div>` : ""}
+          ${showBook ? `
+          <div class="field">
+            <label>Page actuelle${it.totalPages?` / ${it.totalPages}`:""}</label>
+            <input type="number" id="pageInput" min="0" ${it.totalPages?`max="${it.totalPages}"`:""} value="${it.currentPage||0}">
+          </div>
+          <div class="field">
+            <label>Pages au total</label>
+            <input type="number" id="totalPagesInput" min="0" step="1" placeholder="ex : 320" value="${it.totalPages||""}">
           </div>` : ""}
         </div>
 
@@ -1722,6 +1998,13 @@
         const checkedPlaylists = [...document.querySelectorAll("#playlistCheckboxes .playlist-check:checked")].map(cb=>cb.value);
         it.playlists = checkedPlaylists.join(", ");
       }
+      if(showBook){
+        const totalVal = parseInt(document.getElementById("totalPagesInput").value);
+        it.totalPages = isNaN(totalVal) || totalVal <= 0 ? null : totalVal;
+        let cp = parseInt(document.getElementById("pageInput").value) || 0;
+        if(it.totalPages) cp = Math.min(it.totalPages, cp);
+        it.currentPage = Math.max(0, cp);
+      }
       it.notes = document.getElementById("notesArea").value;
       await dbPut(it);
       closeDetail();
@@ -1758,7 +2041,7 @@
     const row = document.getElementById("similarRow");
     if(!section || !row) return;
     section.classList.remove("visible");
-    if(it.category === "musique"){ return; }
+    if(it.category === "musique" || it.category === "livre"){ return; }
     let results = [];
     try{
       results = await fetchSimilarFor(it);
@@ -1803,9 +2086,11 @@
         else if(it.category === "serie") totalMinutes += (it.episodesWatched || it.totalEpisodes || 0) * (it.runtime || 42);
         else if(it.category === "anime") totalMinutes += (it.episodesWatched || it.totalEpisodes || 0) * 24;
         else if(it.category === "jeu") totalMinutes += (it.hoursPlayed || 0) * 60;
+        else if(it.category === "livre") totalMinutes += (it.totalPages || it.currentPage || 0) * 1.5;
       } else {
         if(it.category === "serie" || it.category === "anime") totalMinutes += (it.episodesWatched||0) * (it.category === "anime" ? 24 : (it.runtime||42));
         if(it.category === "jeu") totalMinutes += (it.hoursPlayed||0) * 60;
+        if(it.category === "livre") totalMinutes += (it.currentPage||0) * 1.5;
       }
     });
 
@@ -1817,6 +2102,7 @@
       {num: byCat.anime||0, lbl:"Animés"},
       {num: byCat.jeu||0, lbl:"Jeux vidéo"},
       {num: byCat.musique||0, lbl:"Musiques"},
+      {num: byCat.livre||0, lbl:"Livres"},
       {num: byStatus.termine||0, lbl:"Terminés"},
       {num: byStatus.en_cours||0, lbl:"En cours"},
       {num: totalHours, lbl:"Heures estimées"},

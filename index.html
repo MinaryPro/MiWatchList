@@ -618,11 +618,11 @@
       <button class="icon-btn" id="selectModeBtn" title="Sélection multiple">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 20 6"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
       </button>
-      <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </button>
       <button class="icon-btn" id="importBtn" title="Importer (JSON)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </button>
+      <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
@@ -727,6 +727,18 @@
     </div>
 
     <div class="field" style="border-top:1px solid var(--line); padding-top:16px; margin-top:4px;">
+      <label>Emplacement de sauvegarde</label>
+      <div style="font-size:11.5px; color:var(--text-faint); margin-bottom:10px;">
+        Par défaut, chaque export ouvre une fenêtre pour choisir où enregistrer le fichier. Tu peux aussi définir un dossier par défaut pour que les exports s'y enregistrent automatiquement, sans dialogue à chaque fois.
+      </div>
+      <div id="defaultFolderStatus" style="font-size:12.5px; margin-bottom:10px; color:var(--text-muted);"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="chooseFolderBtn" style="flex:1;">Choisir un dossier par défaut</button>
+        <button class="btn" id="clearFolderBtn" style="display:none; flex:0 0 auto; background:rgba(118,118,128,0.24); color:var(--text);">Retirer</button>
+      </div>
+    </div>
+
+    <div class="field" style="border-top:1px solid var(--line); padding-top:16px; margin-top:4px;">
       <label>Sauvegarde complète (avec images incluses)</label>
       <div style="font-size:11.5px; color:var(--text-faint); margin-bottom:10px;">
         L'export normal (bouton ⬇ en haut) ne contient que des liens vers les pochettes — léger, mais dépendant d'internet pour les revoir. Cette version télécharge et intègre chaque image directement dans le fichier : totalement autonome, mais nettement plus lourd et plus long à générer. La restauration se fait avec le même bouton "Importer", quel que soit le type d'export.
@@ -749,7 +761,7 @@
   "use strict";
 
   /* ===================== IndexedDB ===================== */
-  const DB_NAME = "bobine_db", DB_VERSION = 1, STORE = "items";
+  const DB_NAME = "bobine_db", DB_VERSION = 2, STORE = "items", HANDLE_STORE = "handles";
   let db;
   function openDB(){
     return new Promise((resolve, reject)=>{
@@ -760,6 +772,9 @@
           const s = d.createObjectStore(STORE, {keyPath:"id", autoIncrement:true});
           s.createIndex("category", "category", {unique:false});
           s.createIndex("status", "status", {unique:false});
+        }
+        if(!d.objectStoreNames.contains(HANDLE_STORE)){
+          d.createObjectStore(HANDLE_STORE, {keyPath:"key"});
         }
       };
       req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
@@ -772,6 +787,23 @@
   function dbDelete(id){ return new Promise((res,rej)=>{ const r = txStore("readwrite").delete(id); r.onsuccess=()=>res(); r.onerror=rej; }); }
   function dbClear(){ return new Promise((res,rej)=>{ const r = txStore("readwrite").clear(); r.onsuccess=()=>res(); r.onerror=rej; }); }
 
+  function handleStore(mode="readonly"){ return db.transaction(HANDLE_STORE, mode).objectStore(HANDLE_STORE); }
+  function dbGetHandle(key){
+    return new Promise((res,rej)=>{
+      try{
+        const r = handleStore().get(key);
+        r.onsuccess=()=>res(r.result ? r.result.handle : null);
+        r.onerror=()=>res(null);
+      }catch(e){ res(null); }
+    });
+  }
+  function dbSetHandle(key, handle){
+    return new Promise((res,rej)=>{ const r = handleStore("readwrite").put({key, handle}); r.onsuccess=()=>res(); r.onerror=rej; });
+  }
+  function dbDeleteHandle(key){
+    return new Promise((res,rej)=>{ const r = handleStore("readwrite").delete(key); r.onsuccess=()=>res(); r.onerror=rej; });
+  }
+
   /* ===================== State ===================== */
   let items = [];
   let searchCategory = "film";
@@ -780,6 +812,7 @@
   let libraryFilterCat = "all";
   let selectionMode = false;
   let selectedIds = new Set();
+  let defaultDirHandle = null;
 
   const ALL_CATEGORIES = ["film","serie","anime","jeu","musique","livre"];
   let categoryVisibility = {};
@@ -2182,17 +2215,123 @@
     });
   }
 
-  /* ===================== Export / Import ===================== */
-  function exportData(){
-    const blob = new Blob([JSON.stringify(items, null, 2)], {type:"application/json"});
+  /* ===================== Sauvegarde (choix du dossier) ===================== */
+  const supportsDirPicker = typeof window.showDirectoryPicker === "function";
+  const supportsSavePicker = typeof window.showSaveFilePicker === "function";
+
+  async function loadDefaultFolder(){
+    try{
+      const handle = await dbGetHandle("defaultExportDir");
+      if(handle){
+        defaultDirHandle = handle;
+      }
+    }catch(e){ /* ignore */ }
+    updateDefaultFolderUI();
+  }
+
+  function updateDefaultFolderUI(){
+    const statusEl = document.getElementById("defaultFolderStatus");
+    const clearBtn = document.getElementById("clearFolderBtn");
+    const chooseBtn = document.getElementById("chooseFolderBtn");
+    if(!statusEl) return;
+    if(!supportsDirPicker){
+      statusEl.textContent = "Non disponible sur ce navigateur — utilise Chrome ou Edge sur ordinateur pour choisir un dossier par défaut. Les exports te demanderont l'emplacement à chaque fois (ou téléchargeront normalement).";
+      chooseBtn.disabled = true;
+      clearBtn.style.display = "none";
+      return;
+    }
+    if(defaultDirHandle){
+      statusEl.textContent = `Dossier par défaut actuel : "${defaultDirHandle.name}". Les exports s'y enregistreront automatiquement.`;
+      clearBtn.style.display = "inline-block";
+      chooseBtn.textContent = "Changer de dossier";
+    }else{
+      statusEl.textContent = "Aucun dossier par défaut défini — chaque export t'ouvrira une fenêtre pour choisir où enregistrer.";
+      clearBtn.style.display = "none";
+      chooseBtn.textContent = "Choisir un dossier par défaut";
+    }
+  }
+
+  async function chooseDefaultFolder(){
+    if(!supportsDirPicker){
+      toast("Ton navigateur ne permet pas cette fonctionnalité.");
+      return;
+    }
+    try{
+      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      const perm = await handle.requestPermission({ mode: "readwrite" });
+      if(perm !== "granted") throw new Error("Permission refusée");
+      await dbSetHandle("defaultExportDir", handle);
+      defaultDirHandle = handle;
+      updateDefaultFolderUI();
+      toast(`Dossier par défaut défini : "${handle.name}"`);
+    }catch(e){
+      if(e && e.name === "AbortError") return;
+      toast("Impossible de définir ce dossier par défaut");
+    }
+  }
+
+  async function clearDefaultFolder(){
+    try{ await dbDeleteHandle("defaultExportDir"); }catch(e){ /* ignore */ }
+    defaultDirHandle = null;
+    updateDefaultFolderUI();
+    toast("Dossier par défaut retiré");
+  }
+
+  /**
+   * Enregistre un blob sur le disque.
+   * 1) Si un dossier par défaut est configuré et accessible, écrit directement dedans (sans dialogue).
+   * 2) Sinon, si le navigateur le permet, ouvre une fenêtre "Enregistrer sous" pour choisir l'emplacement.
+   * 3) Sinon, retombe sur le téléchargement classique du navigateur.
+   * Retourne un court libellé décrivant où le fichier a atterri (ou null si l'utilisateur a annulé).
+   */
+  async function saveFile(blob, filename){
+    if(defaultDirHandle){
+      try{
+        let perm = await defaultDirHandle.queryPermission({ mode: "readwrite" });
+        if(perm !== "granted") perm = await defaultDirHandle.requestPermission({ mode: "readwrite" });
+        if(perm === "granted"){
+          const fileHandle = await defaultDirHandle.getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          return `dossier "${defaultDirHandle.name}"`;
+        }
+      }catch(e){
+        console.warn("Échec de l'écriture dans le dossier par défaut, on retombe sur une autre méthode.", e);
+      }
+    }
+    if(supportsSavePicker){
+      try{
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: "Fichier JSON", accept: { "application/json": [".json"] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return "emplacement choisi";
+      }catch(e){
+        if(e && e.name === "AbortError") return null;
+        console.warn("showSaveFilePicker a échoué, retour au téléchargement classique.", e);
+      }
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `miwatchlist_export_${new Date().toISOString().slice(0,10)}.json`;
+    a.href = url; a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    return "dossier de téléchargements";
+  }
+
+  /* ===================== Export / Import ===================== */
+  async function exportData(){
+    const blob = new Blob([JSON.stringify(items, null, 2)], {type:"application/json"});
+    const filename = `miwatchlist_export_${new Date().toISOString().slice(0,10)}.json`;
+    const where = await saveFile(blob, filename);
+    if(!where) return;
     localStorage.setItem("bobine_last_export", new Date().toISOString());
     checkBackupReminder();
-    toast("Export lancé");
+    toast(`Export enregistré (${where})`);
   }
 
   function imageUrlToDataURL(url){
@@ -2234,20 +2373,24 @@
     }
 
     const blob = new Blob([JSON.stringify(exportItems)], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `miwatchlist_export_complet_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    localStorage.setItem("bobine_last_export", new Date().toISOString());
-    checkBackupReminder();
+    const filename = `miwatchlist_export_complet_${new Date().toISOString().slice(0,10)}.json`;
+    const where = await saveFile(blob, filename);
 
     btn.disabled = false;
     btn.textContent = "Exporter avec images incluses";
+
+    if(!where){
+      progressEl.textContent = "Export annulé.";
+      return;
+    }
+
+    localStorage.setItem("bobine_last_export", new Date().toISOString());
+    checkBackupReminder();
+
     progressEl.textContent = failed > 0
       ? `Terminé — ${failed} image(s) n'ont pas pu être intégrée(s) (lien conservé à la place).`
       : "";
-    toast(`Export complet terminé (${exportItems.length} titres)`);
+    toast(`Export complet enregistré (${exportItems.length} titres, ${where})`);
   }
   async function importData(file){
     try{
@@ -2286,6 +2429,7 @@
     `).join("");
     document.getElementById("settingsOverlay").classList.add("open");
     refreshStorageUsage();
+    updateDefaultFolderUI();
   }
   function closeSettings(){ document.getElementById("settingsOverlay").classList.remove("open"); }
 
@@ -2402,6 +2546,9 @@
       toast("Paramètres enregistrés");
     });
 
+    document.getElementById("chooseFolderBtn").addEventListener("click", chooseDefaultFolder);
+    document.getElementById("clearFolderBtn").addEventListener("click", clearDefaultFolder);
+
     document.getElementById("exportBtn").addEventListener("click", exportData);
     document.getElementById("backupReminderExport").addEventListener("click", exportData);
     document.getElementById("exportImagesBtn").addEventListener("click", exportDataWithImages);
@@ -2464,6 +2611,7 @@
   openDB().then(async ()=>{
     items = await dbGetAll();
     syncPlaylistNamesFromItems();
+    await loadDefaultFolder();
     init();
     renderLibrary();
     if(navigator.storage && navigator.storage.persist){

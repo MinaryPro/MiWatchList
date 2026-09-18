@@ -71,6 +71,7 @@
     backdrop-filter:saturate(180%) blur(20px);
     -webkit-backdrop-filter:saturate(180%) blur(20px);
     border-bottom:1px solid var(--line);
+    transform:translateZ(0); -webkit-transform:translateZ(0); will-change:transform;
   }
   .brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}
   .brand .mark{
@@ -477,6 +478,7 @@
       background:rgba(0,0,0,0.86); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px);
       border-top:1px solid var(--line);
       padding:6px 10px calc(6px + env(safe-area-inset-bottom)) 10px;
+      transform:translateZ(0); -webkit-transform:translateZ(0); will-change:transform;
     }
     .mobile-tabbar .view-tab{
       flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -485,6 +487,7 @@
     }
     .mobile-tabbar .view-tab svg{width:21px; height:21px; stroke-width:1.8;}
     .mobile-tabbar .view-tab.active{color:var(--accent);}
+    body.overlay-open .mobile-tabbar{display:none;}
 
     /* --- Éléments fixes en bas : on les remonte au-dessus de la barre de nav --- */
     .bulk-bar{bottom:calc(20px + 58px + env(safe-area-inset-bottom));}
@@ -2274,10 +2277,19 @@
     });
 
     document.getElementById("detailOverlay").classList.add("open");
+    updateOverlayBodyClass();
     loadSimilar(it);
     loadNextEpisode(it);
   }
-  function closeDetail(){ document.getElementById("detailOverlay").classList.remove("open"); }
+  function closeDetail(){ document.getElementById("detailOverlay").classList.remove("open"); updateOverlayBodyClass(); }
+
+  // Cache la barre de navigation basse (mobile) tant qu'une fenêtre plein écran (fiche ou réglages) est ouverte,
+  // pour qu'elle ne recouvre plus les boutons en bas de ces fenêtres.
+  function updateOverlayBodyClass(){
+    const anyOpen = document.getElementById("detailOverlay").classList.contains("open")
+      || document.getElementById("settingsOverlay").classList.contains("open");
+    document.body.classList.toggle("overlay-open", anyOpen);
+  }
 
   let nextEpRequestToken = 0;
   async function loadNextEpisode(it){
@@ -2521,9 +2533,10 @@
       </label>
     `).join("");
     document.getElementById("settingsOverlay").classList.add("open");
+    updateOverlayBodyClass();
     refreshStorageUsage();
   }
-  function closeSettings(){ document.getElementById("settingsOverlay").classList.remove("open"); }
+  function closeSettings(){ document.getElementById("settingsOverlay").classList.remove("open"); updateOverlayBodyClass(); }
 
   function formatBytes(bytes){
     if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + " Ko";

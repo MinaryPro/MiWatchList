@@ -782,7 +782,7 @@
   "use strict";
 
   /* ===================== IndexedDB ===================== */
-  const DB_NAME = "bobine_db", DB_VERSION = 1, STORE = "items";
+  const DB_NAME = "bobine_db", DB_VERSION = 3, STORE = "items";
   let db;
   function openDB(){
     return new Promise((resolve, reject)=>{
@@ -795,8 +795,11 @@
           s.createIndex("status", "status", {unique:false});
         }
       };
+      req.onblocked = ()=>{
+        reject(new Error("La base locale est bloquée par un autre onglet ouvert de l'application. Ferme les autres onglets puis recharge la page."));
+      };
       req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
-      req.onerror = (e)=> reject(e);
+      req.onerror = (e)=> reject(e.target.error || new Error("Erreur IndexedDB inconnue"));
     });
   }
   function txStore(mode="readonly"){ return db.transaction(STORE, mode).objectStore(STORE); }
@@ -2652,7 +2655,8 @@
     }
   }).catch(err=>{
     console.error(err);
-    document.body.innerHTML = "<p style='color:white;padding:40px;font-family:sans-serif;'>Erreur d'initialisation de la base locale (IndexedDB). Essaie un autre navigateur ou vérifie que le mode privé n'est pas actif.</p>";
+    const detail = (err && (err.message || err.name)) ? String(err.message || err.name) : "erreur inconnue";
+    document.body.innerHTML = "<p style='color:white;padding:40px;font-family:sans-serif;'>Erreur d'initialisation de la base locale (IndexedDB) : " + detail + ".<br>Essaie un autre navigateur, vérifie que le mode privé n'est pas actif, ou ferme les autres onglets de l'application puis recharge la page.</p>";
   });
 
 })();

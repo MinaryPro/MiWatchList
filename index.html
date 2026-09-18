@@ -131,6 +131,9 @@
   .icon-btn:hover{color:var(--text); background:rgba(118,118,128,0.32);}
   .icon-btn:active{transform:scale(.92); transition-duration:.08s;}
   .icon-btn svg{width:16px;height:16px;}
+  .icon-btn.spinning{pointer-events:none; color:var(--accent);}
+  .icon-btn.spinning svg{animation:icon-spin .8s linear infinite;}
+  @keyframes icon-spin{to{transform:rotate(360deg);}}
 
   /* ---------- search results dropdown ---------- */
   .results-panel{
@@ -444,12 +447,12 @@
   @media (max-width:720px){
     body{font-size:15px;}
 
-    /* --- Top bar: brand+settings on row 1, search on row 2, search categories on row 3 --- */
+    /* --- Top bar: brand+search+settings on row 1, search categories on row 2 --- */
     .topbar{flex-wrap:wrap; padding:10px 14px; gap:8px;}
     .brand{order:1;}
-    .brand .name{font-size:18px;}
-    #settingsBtn{order:2; margin-left:auto;}
-    .searchwrap{order:3; max-width:none; width:100%; flex-basis:100%;}
+    .brand .name{font-size:16px;}
+    .searchwrap{order:2; flex:1 1 120px; min-width:0; max-width:none;}
+    #settingsBtn{order:3; margin-left:0; flex-shrink:0;}
     #searchCatTabs{order:4; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
 
     .cat-tabs{overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
@@ -506,9 +509,10 @@
     /* --- Modal: near-fullscreen sheet (slides up from bottom, no scale = no jitter on mobile) --- */
     .overlay{padding:0; align-items:stretch;}
     .modal{flex-direction:column; max-width:none; width:100%; min-height:100%; margin-bottom:0; border-radius:0; border:none;
-      transform:translateY(28px) scale(1);}
+      transform:translateY(28px) scale(1);
+      overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain;}
     .overlay.open .modal{transform:translateY(0) scale(1);}
-    .modal-poster{width:100%; height:44vw; min-height:180px; max-height:280px;}
+    .modal-poster{width:100%; height:44vw; min-height:180px; max-height:280px; flex-shrink:0;}
     .modal-body{padding:18px 18px calc(28px + env(safe-area-inset-bottom));}
     .field-row{gap:10px;}
     .field{min-width:100px;}
@@ -620,6 +624,9 @@
       </button>
       <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="icon-btn" id="refreshCloudBtn" title="Fusionner avec la sauvegarde cloud">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
       </button>
       <button class="icon-btn" id="importBtn" title="Importer (JSON)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -805,7 +812,10 @@
   function txStore(mode="readonly"){ return db.transaction(STORE, mode).objectStore(STORE); }
   function dbGetAll(){ return new Promise((res,rej)=>{ const r = txStore().getAll(); r.onsuccess=()=>res(r.result); r.onerror=rej; }); }
   let suppressAutoSync = false; // vrai pendant qu'on réécrit la base locale depuis le cloud, pour éviter un aller-retour inutile
-  function dbPut(item){ return new Promise((res,rej)=>{ const r = txStore("readwrite").put(item); r.onsuccess=()=>{ if(!suppressAutoSync) scheduleCloudSync(); res(r.result); }; r.onerror=rej; }); }
+  function dbPut(item){
+    if(!suppressAutoSync) item.updatedAt = new Date().toISOString(); // horodatage par fiche, utilisé pour départager les fusions entre appareils
+    return new Promise((res,rej)=>{ const r = txStore("readwrite").put(item); r.onsuccess=()=>{ if(!suppressAutoSync) scheduleCloudSync(); res(r.result); }; r.onerror=rej; });
+  }
   function dbDelete(id){ return new Promise((res,rej)=>{ const r = txStore("readwrite").delete(id); r.onsuccess=()=>{ if(!suppressAutoSync) scheduleCloudSync(); res(); }; r.onerror=rej; }); }
 
   /* ===================== Synchronisation cloud (Firebase Realtime Database) =====================
@@ -876,6 +886,28 @@
     }
   }
 
+  // Remplace intégralement la bibliothèque locale par une liste d'items venue du cloud.
+  async function replaceLocalItemsFromRemote(remoteItems){
+    suppressAutoSync = true;
+    try{
+      const existing = await dbGetAll();
+      for(const it of existing){ await dbDelete(it.id); }
+      items = [];
+      for(const it of remoteItems){
+        const copy = Object.assign({}, it);
+        delete copy.id;
+        const newId = await dbPut(copy);
+        copy.id = newId;
+        items.push(copy);
+      }
+    } finally {
+      suppressAutoSync = false;
+    }
+    syncPlaylistNamesFromItems();
+    renderLibrary();
+    if(currentView === "stats") renderStats();
+  }
+
   // Appelé une fois au démarrage (et manuellement via "Synchroniser maintenant") : compare
   // l'horodatage local et distant, adopte le plus récent (dernier écrit gagne).
   async function reconcileCloudSync(){
@@ -886,30 +918,82 @@
     if(remote === undefined) return; // erreur réseau déjà signalée, on ne touche à rien localement
     const localLast = localStorage.getItem("bobine_last_sync") || "1970-01-01T00:00:00.000Z";
     if(remote && remote.lastModified && Array.isArray(remote.items) && remote.lastModified > localLast){
-      suppressAutoSync = true;
-      try{
-        const existing = await dbGetAll();
-        for(const it of existing){ await dbDelete(it.id); }
-        items = [];
-        for(const it of remote.items){
-          const copy = Object.assign({}, it);
-          delete copy.id;
-          const newId = await dbPut(copy);
-          copy.id = newId;
-          items.push(copy);
-        }
-      } finally {
-        suppressAutoSync = false;
-      }
+      await replaceLocalItemsFromRemote(remote.items);
       localStorage.setItem("bobine_last_sync", remote.lastModified);
-      syncPlaylistNamesFromItems();
-      renderLibrary();
-      if(currentView === "stats") renderStats();
       setSyncStatus("ok");
       toast("Bibliothèque synchronisée depuis le cloud");
     } else {
       // Le local est à jour (ou plus récent, ou rien côté cloud pour l'instant) : on pousse.
       await pushToCloud();
+    }
+  }
+
+  // Clé stable d'un item, valable sur tous les appareils (contrairement à l'id local auto-incrémenté).
+  function itemMergeKey(it){ return `${it.category}::${it.source}::${it.externalId}`; }
+
+  // Fusionne deux bibliothèques (locale + cloud) : tout ce qui n'existe que d'un côté est conservé,
+  // et pour un même titre présent des deux côtés, on garde la version la plus récemment modifiée.
+  function mergeItemLists(localItems, remoteItems){
+    const localMap = new Map(localItems.map(it => [itemMergeKey(it), it]));
+    const remoteMap = new Map(remoteItems.map(it => [itemMergeKey(it), it]));
+    const allKeys = new Set([...localMap.keys(), ...remoteMap.keys()]);
+    const merged = [];
+    let fromCloudOnly = 0, updatedFromCloud = 0;
+    for(const key of allKeys){
+      const l = localMap.get(key), r = remoteMap.get(key);
+      if(l && r){
+        const lt = new Date(l.updatedAt || l.dateAdded || 0).getTime();
+        const rt = new Date(r.updatedAt || r.dateAdded || 0).getTime();
+        if(rt > lt){ merged.push(r); updatedFromCloud++; }
+        else merged.push(l);
+      } else if(l){
+        merged.push(l);
+      } else if(r){
+        merged.push(r);
+        fromCloudOnly++;
+      }
+    }
+    return { merged, fromCloudOnly, updatedFromCloud };
+  }
+
+  // Déclenché par le bouton "actualiser" de la barre d'actions : compare la bibliothèque locale à
+  // celle du cloud, fusionne les deux (rien n'est perdu), enregistre le résultat localement puis
+  // le renvoie sur le cloud pour que tous les appareils repartent de cette version fusionnée.
+  async function forceRefreshFromCloud(){
+    const endpoint = cloudEndpoint();
+    const btn = document.getElementById("refreshCloudBtn");
+    if(!endpoint){
+      toast("Configure d'abord la synchronisation cloud dans les réglages");
+      return;
+    }
+    if(btn) btn.classList.add("spinning");
+    setSyncStatus("syncing");
+    try{
+      const remote = await pullFromCloud();
+      if(remote === undefined) return; // erreur réseau déjà signalée
+      if(!remote || !Array.isArray(remote.items) || remote.items.length === 0){
+        setSyncStatus("off");
+        toast("Aucune sauvegarde trouvée sur le cloud pour cette clé");
+        return;
+      }
+      const { merged, fromCloudOnly, updatedFromCloud } = mergeItemLists(items, remote.items);
+      if(fromCloudOnly === 0 && updatedFromCloud === 0){
+        setSyncStatus("ok");
+        toast("Déjà à jour — aucune différence avec le cloud");
+        return;
+      }
+      const parts = [];
+      if(fromCloudOnly > 0) parts.push(`${fromCloudOnly} titre${fromCloudOnly>1?"s":""} récupéré${fromCloudOnly>1?"s":""}`);
+      if(updatedFromCloud > 0) parts.push(`${updatedFromCloud} titre${updatedFromCloud>1?"s":""} mis à jour`);
+      if(!confirm(`Fusionner avec le cloud : ${parts.join(" et ")}. Ta bibliothèque locale et le cloud seront mis à jour avec le résultat. Continuer ?`)){
+        setSyncStatus("off");
+        return;
+      }
+      await replaceLocalItemsFromRemote(merged);
+      await pushToCloud(); // renvoie la fusion sur le cloud pour que les autres appareils en profitent aussi
+      toast(`Bibliothèque fusionnée avec le cloud (${parts.join(", ")})`);
+    } finally {
+      if(btn) btn.classList.remove("spinning");
     }
   }
   function dbClear(){ return new Promise((res,rej)=>{ const r = txStore("readwrite").clear(); r.onsuccess=()=>res(); r.onerror=rej; }); }
@@ -1785,6 +1869,7 @@
   function checkBackupReminder(){
     const banner = document.getElementById("backupReminder");
     if(!items.length){ banner.style.display = "none"; return; }
+    if(cloudEndpoint()){ banner.style.display = "none"; return; } // la synchro cloud fait déjà office de sauvegarde continue
     const today = new Date().toISOString().slice(0,10);
     if(localStorage.getItem("bobine_reminder_dismissed") === today){ banner.style.display = "none"; return; }
 
@@ -2584,6 +2669,7 @@
     });
 
     document.getElementById("exportBtn").addEventListener("click", exportData);
+    document.getElementById("refreshCloudBtn").addEventListener("click", forceRefreshFromCloud);
     document.getElementById("backupReminderExport").addEventListener("click", exportData);
     document.getElementById("exportImagesBtn").addEventListener("click", exportDataWithImages);
     document.getElementById("backupReminderDismiss").addEventListener("click", ()=>{

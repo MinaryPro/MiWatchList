@@ -456,17 +456,18 @@
 
     /* --- Top bar mobile : logo seul + "Tous"/"Récent" + bouton recherche + réglages sur 1 ligne,
        catégories de recherche sur la 2e ligne. La recherche se déplie en plein écran au tap. --- */
-    .topbar{flex-wrap:wrap; padding:10px 14px; gap:8px;}
+    .topbar{flex-wrap:wrap; padding:10px 14px; gap:4px;}
     .brand{order:1;}
-    .brand .name{display:none;}
-    #mobileFiltersSlot{order:2; display:flex; align-items:center; gap:6px; flex-shrink:1; min-width:0; overflow:hidden;}
+    .brand .name{display:block; font-size:16px;}
+    #mobileFiltersSlot{order:3; display:flex; align-items:center; gap:6px; flex-shrink:1; min-width:0; overflow:hidden;}
     #mobileFiltersSlot .custom-select-trigger{padding:7px 10px; font-size:12.5px; gap:4px;}
     #mobileFiltersSlot .custom-select-trigger svg{width:10px; height:10px;}
-    #mobileSearchBtn{order:3; margin-left:auto; flex-shrink:0;}
+    #mobileSearchBtn{order:2; display:flex; margin-left:auto; flex-shrink:0; width:34px; height:31px;}
     .searchwrap{order:4; display:none; flex:1 1 auto; min-width:0; max-width:none;}
     #mobileSearchClose{order:5; flex-shrink:0;}
-    #settingsBtn{order:6; margin-left:0; flex-shrink:0;}
-    #searchCatTabs{order:7; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+    #settingsBtn{order:6; margin-left:0; flex-shrink:0; width:34px; height:31px;}
+    #searchCatTabs{order:7; width:100%; flex-basis:100%; gap:0; overflow:hidden;}
+    #searchCatTabs .cat-tab{flex:1 1 0; min-width:0; padding:8px 2px; font-size:clamp(11px, 3.2vw, 13px);}
 
     /* Mode recherche dépliée : on ne garde que le logo, le champ et le bouton fermer */
     .topbar.mobile-search-open #mobileFiltersSlot,
@@ -486,7 +487,8 @@
        ce qui laisse la place ici pour les filtres, plus compacts --- */
     .subnav{padding:10px 14px 8px; gap:8px;}
     .view-tabs{display:none;}
-    #libraryCatTabs{order:1; width:100%; flex-basis:100%;}
+    #libraryCatTabs{order:1; width:100%; flex-basis:100%; gap:0; overflow:hidden;}
+    #libraryCatTabs .cat-tab{flex:1 1 0; min-width:0; padding:7px 2px; font-size:clamp(11px, 3.2vw, 13px);}
     .filters-row{order:2; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; scrollbar-width:none;}
     .filters-row::-webkit-scrollbar{display:none;}
     .filters-row > *{flex-shrink:0;}
@@ -556,6 +558,11 @@
     .card-body .sub{font-size:10.5px;}
     .brand .name{font-size:16px;}
     .mobile-tabbar .view-tab span{font-size:10px;}
+  }
+
+  @media (max-width:360px){
+    #searchCatTabs .cat-tab{padding-inline:0; font-size:10px;}
+    #libraryCatTabs .cat-tab{padding-inline:0; font-size:10px;}
   }
 </style>
 </head>

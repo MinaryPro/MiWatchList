@@ -136,6 +136,12 @@
   .icon-btn.spinning svg{animation:icon-spin .8s linear infinite;}
   @keyframes icon-spin{to{transform:rotate(360deg);}}
 
+  /* --- Éléments réservés à l'affichage mobile (cachés par défaut, activés dans le media query mobile) --- */
+  #mobileFiltersSlot, #mobileSearchBtn, #mobileSearchClose{display:none;}
+  .mobile-only-field{display:none;}
+  #actionsBlock{display:contents;}
+  #mobileActionsSlot #actionsBlock{display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;}
+
   /* ---------- search results dropdown ---------- */
   .results-panel{
     position:absolute; top:calc(100% + 8px); left:0; right:0;
@@ -448,17 +454,33 @@
   @media (max-width:720px){
     body{font-size:15px;}
 
-    /* --- Top bar: brand+search+settings on row 1, search categories on row 2 --- */
+    /* --- Top bar mobile : logo seul + "Tous"/"Récent" + bouton recherche + réglages sur 1 ligne,
+       catégories de recherche sur la 2e ligne. La recherche se déplie en plein écran au tap. --- */
     .topbar{flex-wrap:wrap; padding:10px 14px; gap:8px;}
     .brand{order:1;}
-    .brand .name{font-size:16px;}
-    .searchwrap{order:2; flex:1 1 120px; min-width:0; max-width:none;}
-    #settingsBtn{order:3; margin-left:0; flex-shrink:0;}
-    #searchCatTabs{order:4; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+    .brand .name{display:none;}
+    #mobileFiltersSlot{order:2; display:flex; align-items:center; gap:6px; flex-shrink:1; min-width:0; overflow:hidden;}
+    #mobileFiltersSlot .custom-select-trigger{padding:7px 10px; font-size:12.5px; gap:4px;}
+    #mobileFiltersSlot .custom-select-trigger svg{width:10px; height:10px;}
+    #mobileSearchBtn{order:3; margin-left:auto; flex-shrink:0;}
+    .searchwrap{order:4; display:none; flex:1 1 auto; min-width:0; max-width:none;}
+    #mobileSearchClose{order:5; flex-shrink:0;}
+    #settingsBtn{order:6; margin-left:0; flex-shrink:0;}
+    #searchCatTabs{order:7; width:100%; flex-basis:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+
+    /* Mode recherche dépliée : on ne garde que le logo, le champ et le bouton fermer */
+    .topbar.mobile-search-open #mobileFiltersSlot,
+    .topbar.mobile-search-open #mobileSearchBtn,
+    .topbar.mobile-search-open #settingsBtn{display:none;}
+    .topbar.mobile-search-open .searchwrap{display:block;}
+    .topbar.mobile-search-open #mobileSearchClose{display:flex;}
 
     .cat-tabs{overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
     .cat-tabs::-webkit-scrollbar{display:none;}
     .cat-tab{padding:8px 14px;}
+
+    /* --- Actions rapides déplacées dans les réglages : on affiche le champ dédié --- */
+    .mobile-only-field{display:block;}
 
     /* --- Subnav: la bascule Bibliothèque/Statistiques passe en barre basse,
        ce qui laisse la place ici pour les filtres, plus compacts --- */
@@ -499,12 +521,12 @@
     .close-x{width:30px; height:30px; font-size:16px;}
     .custom-select-trigger{padding:9px 13px;}
 
-    /* --- Grid: 4 colonnes fixes sur mobile/tablette (au lieu d'auto-fill,
+    /* --- Grid: 3 colonnes fixes sur mobile/tablette (au lieu d'auto-fill,
        qui pouvait laisser une marge de droite inégale selon la largeur exacte) --- */
-    .grid{grid-template-columns:repeat(4, 1fr); gap:16px 10px;}
+    .grid{grid-template-columns:repeat(3, 1fr); gap:16px 12px;}
     .card-body{padding:8px 1px 0;}
-    .card-body .title{font-size:12px;}
-    .card-body .sub{font-size:10.5px;}
+    .card-body .title{font-size:13px;}
+    .card-body .sub{font-size:11.5px;}
     .status-badge{font-size:9px; padding:2px 7px; top:6px; right:6px;}
     .fav-btn{width:24px; height:24px; top:6px; left:6px;}
     .fav-btn svg{width:12px; height:12px;}
@@ -528,10 +550,10 @@
   }
 
   @media (max-width:380px){
-    .grid{grid-template-columns:repeat(4, 1fr); gap:12px 7px;}
+    .grid{grid-template-columns:repeat(3, 1fr); gap:12px 9px;}
     .card-body{padding:7px 0 0;}
-    .card-body .title{font-size:11px;}
-    .card-body .sub{font-size:10px;}
+    .card-body .title{font-size:12px;}
+    .card-body .sub{font-size:10.5px;}
     .brand .name{font-size:16px;}
     .mobile-tabbar .view-tab span{font-size:10px;}
   }
@@ -561,16 +583,23 @@
     </div>
     <div class="name">MiWatchList</div>
   </div>
+  <div id="mobileFiltersSlot" class="mobile-filters-slot"></div>
+  <button class="icon-btn" id="mobileSearchBtn" title="Rechercher">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </button>
   <div class="searchwrap">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input id="searchInput" type="text" placeholder="Chercher un titre à ajouter…" autocomplete="off">
     <div id="resultsPanel" class="results-panel"></div>
   </div>
+  <button class="icon-btn" id="mobileSearchClose" title="Fermer la recherche">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
   <div class="cat-tabs" id="searchCatTabs">
     <button class="cat-tab active" data-cat="film">Film</button>
     <button class="cat-tab" data-cat="serie">Série</button>
     <button class="cat-tab" data-cat="anime">Animé</button>
-    <button class="cat-tab" data-cat="jeu">Jeu vidéo</button>
+    <button class="cat-tab" data-cat="jeu">Jeux</button>
     <button class="cat-tab" data-cat="musique">Musique</button>
     <button class="cat-tab" data-cat="livre">Livre</button>
   </div>
@@ -600,8 +629,9 @@
     <button class="icon-btn" id="newPlaylistBtn" title="Nouvelle playlist" style="display:none;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
+    <span id="filtersAnchor" style="display:none;"></span>
     <select id="filterStatus">
-      <option value="all">Tous les statuts</option>
+      <option value="all">Tous</option>
       <option value="a_voir">À voir/jouer</option>
       <option value="en_cours">En cours</option>
       <option value="pause">En pause</option>
@@ -609,7 +639,7 @@
       <option value="abandonne">Abandonné</option>
     </select>
     <select id="sortBy">
-      <option value="added_desc">Ajout récent</option>
+      <option value="added_desc">Récent</option>
       <option value="added_asc">Ajout ancien</option>
       <option value="alpha">Alphabétique</option>
       <option value="artist_alpha">Artiste (A-Z)</option>
@@ -620,20 +650,23 @@
     </select>
   </div>
   <div class="actions-row">
-    <span class="count-pill" id="countPill"></span>
-    <div class="actions-icons">
-      <button class="icon-btn" id="selectModeBtn" title="Sélection multiple">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 20 6"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      </button>
-      <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </button>
-      <button class="icon-btn" id="refreshCloudBtn" title="Fusionner avec la sauvegarde cloud">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-      </button>
-      <button class="icon-btn" id="importBtn" title="Importer (JSON)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      </button>
+    <span id="desktopActionsAnchor" style="display:none;"></span>
+    <div id="actionsBlock">
+      <span class="count-pill" id="countPill"></span>
+      <div class="actions-icons">
+        <button class="icon-btn" id="selectModeBtn" title="Sélection multiple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 20 6"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </button>
+        <button class="icon-btn" id="exportBtn" title="Exporter (JSON)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="icon-btn" id="refreshCloudBtn" title="Fusionner avec la sauvegarde cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        </button>
+        <button class="icon-btn" id="importBtn" title="Importer (JSON)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </button>
+      </div>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
   </div>
@@ -703,6 +736,11 @@
     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
       <h2>Paramètres</h2>
       <button class="close-x" id="closeSettings">×</button>
+    </div>
+
+    <div class="field mobile-only-field" id="mobileActionsField">
+      <label>Actions rapides</label>
+      <div id="mobileActionsSlot"></div>
     </div>
 
     <div class="field" id="storageUsageField" style="display:none;">
@@ -1795,6 +1833,55 @@
     return wrapper;
   }
 
+  /* ===================== Mise en page responsive (déplacement des filtres/actions) =====================
+     Sur mobile, "Tous"/"Récent" rejoignent la barre du haut à côté de la recherche, et le nombre de titres +
+     les boutons sélection/export/actualiser/importer rejoignent les réglages, pour gagner de la place.
+     Sur PC, tout revient exactement à sa position d'origine — rien ne change dans ce mode. */
+  const MOBILE_LAYOUT_MQ = window.matchMedia("(max-width:720px)");
+
+  function relocateFilters(isMobile){
+    const statusSelect = document.getElementById("filterStatus");
+    const sortSelect = document.getElementById("sortBy");
+    const slot = document.getElementById("mobileFiltersSlot");
+    const anchor = document.getElementById("filtersAnchor");
+    if(!statusSelect || !sortSelect || !slot || !anchor) return;
+    const statusWrap = statusSelect.nextElementSibling && statusSelect.nextElementSibling.classList.contains("custom-select") ? statusSelect.nextElementSibling : null;
+    const sortWrap = sortSelect.nextElementSibling && sortSelect.nextElementSibling.classList.contains("custom-select") ? sortSelect.nextElementSibling : null;
+    if(isMobile){
+      slot.appendChild(statusSelect);
+      if(statusWrap) slot.appendChild(statusWrap);
+      slot.appendChild(sortSelect);
+      if(sortWrap) slot.appendChild(sortWrap);
+    } else {
+      let ref = anchor;
+      [statusSelect, statusWrap, sortSelect, sortWrap].forEach(node=>{
+        if(!node) return;
+        ref.parentNode.insertBefore(node, ref.nextSibling);
+        ref = node;
+      });
+    }
+  }
+
+  function relocateActions(isMobile){
+    const block = document.getElementById("actionsBlock");
+    const slot = document.getElementById("mobileActionsSlot");
+    const anchor = document.getElementById("desktopActionsAnchor");
+    if(!block || !slot || !anchor) return;
+    if(isMobile) slot.appendChild(block);
+    else anchor.parentNode.insertBefore(block, anchor.nextSibling);
+  }
+
+  function initResponsiveLayout(){
+    function apply(){
+      const isMobile = MOBILE_LAYOUT_MQ.matches;
+      relocateFilters(isMobile);
+      relocateActions(isMobile);
+    }
+    apply();
+    if(MOBILE_LAYOUT_MQ.addEventListener) MOBILE_LAYOUT_MQ.addEventListener("change", apply);
+    else MOBILE_LAYOUT_MQ.addListener(apply); // anciens navigateurs
+  }
+
   /* ===================== Rendering: library ===================== */
   function getFiltered(){
     const cat = libraryFilterCat;
@@ -2607,6 +2694,20 @@
     ["filterStatus","sortBy","filterPlaylist"].forEach(id=>{
       enhanceSelect(document.getElementById(id));
       document.getElementById(id).addEventListener("change", renderLibrary);
+    });
+
+    initResponsiveLayout();
+
+    document.getElementById("mobileSearchBtn").addEventListener("click", ()=>{
+      document.querySelector(".topbar").classList.add("mobile-search-open");
+      document.getElementById("searchInput").focus();
+    });
+    document.getElementById("mobileSearchClose").addEventListener("click", ()=>{
+      document.querySelector(".topbar").classList.remove("mobile-search-open");
+      const input = document.getElementById("searchInput");
+      input.value = "";
+      input.blur();
+      document.getElementById("resultsPanel").classList.remove("open");
     });
 
     document.getElementById("newPlaylistBtn").addEventListener("click", ()=>{
